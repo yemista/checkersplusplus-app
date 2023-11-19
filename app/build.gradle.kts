@@ -24,10 +24,10 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            buildConfigField("String", "BASE_URL", "\"http://192.168.0.15:8080/checkersplusplus/api\"")
+            buildConfigField("String", "BASE_URL", "\"http://192.168.0.25:8080/checkersplusplus/api\"")
         }
         debug {
-            buildConfigField("String", "BASE_URL", "\"http://192.168.0.15:8080/checkersplusplus/api\"")
+            buildConfigField("String", "BASE_URL", "\"http://192.168.0.25:8080/checkersplusplus/api\"")
         }
     }
     compileOptions {
@@ -40,6 +40,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        viewBinding = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.4.3"
@@ -63,6 +64,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
+    implementation("androidx.recyclerview:recyclerview:1.2.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.3")
     implementation("com.google.android.material:material:1.8.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")

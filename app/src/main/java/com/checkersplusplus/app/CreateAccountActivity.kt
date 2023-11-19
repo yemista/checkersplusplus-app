@@ -1,7 +1,9 @@
 package com.checkersplusplus.app
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.util.Patterns
 import android.widget.Button
 import android.widget.EditText
@@ -14,6 +16,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
 
@@ -60,29 +63,46 @@ class CreateAccountActivity : AppCompatActivity() {
             // Asynchronously make the POST request
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    val response = makePostRequest(email, username, password)
+                    val responseBody = makePostRequest(email, username, password, confirmPassword)
+
                     withContext(Dispatchers.Main) {
-                        // Handle the response on the main thread
-                        // Example: Toast.makeText(applicationContext, response, Toast.LENGTH_LONG).show()
+                        if (responseBody == null || responseBody == "") {
+                            Toast.makeText(applicationContext, "No response from server. Try again soon", Toast.LENGTH_LONG).show()
+                        }
+
+                        val createAccountResponse = ResponseUtil.parseJson(responseBody)
+
+                        if (createAccountResponse == null) {
+                            Toast.makeText(applicationContext, "Invalid response from server. Try again soon", Toast.LENGTH_LONG).show()
+                        }
+
+                        val message = createAccountResponse["message"]
+
+                        if (message != null) {
+                            Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
+
+                            if (message.startsWith("Account created successfully")) {
+                                val intent =
+                                    Intent(this@CreateAccountActivity, VerifyActivity::class.java)
+                                startActivity(intent)
+                            }
+                        }
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        // Handle error
+                        Toast.makeText(applicationContext, e.toString(), Toast.LENGTH_LONG).show()
                     }
                 }
             }
-
-            // If all validations pass
-            Toast.makeText(this, "Account Created Successfully", Toast.LENGTH_LONG).show()
-            // Proceed with account creation logic
         }
     }
 
-    private suspend fun makePostRequest(email: String, username: String, password: String): String {
+    private suspend fun makePostRequest(email: String, username: String, password: String, confirmPassword: String): String {
         val json = JSONObject()
         json.put("email", email)
         json.put("username", username)
         json.put("password", password)
+        json.put("confirmPassword", confirmPassword)
 
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val requestBody = json.toString().toRequestBody(mediaType)
@@ -93,8 +113,6 @@ class CreateAccountActivity : AppCompatActivity() {
             .build()
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Unexpected code $response")
-
             return response.body?.string() ?: ""
         }
     }

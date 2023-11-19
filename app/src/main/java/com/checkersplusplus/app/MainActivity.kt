@@ -1,5 +1,6 @@
 package com.checkersplusplus.app
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
@@ -26,9 +27,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var passwordEditText: EditText
     private lateinit var loginButton: Button
     private lateinit var createAccountButton: Button
+    private lateinit var verifyAccountButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        StorageUtil.init(applicationContext)
         setContentView(R.layout.initial_screen)
 
         // Initialize views
@@ -36,6 +39,7 @@ class MainActivity : AppCompatActivity() {
         passwordEditText = findViewById(R.id.passwordEditText)
         loginButton = findViewById(R.id.loginButton)
         createAccountButton = findViewById(R.id.createAccountButton)
+        verifyAccountButton = findViewById(R.id.verifyAccountButton)
 
         // Set up the button click listeners
         loginButton.setOnClickListener {
@@ -43,6 +47,10 @@ class MainActivity : AppCompatActivity() {
         }
         createAccountButton.setOnClickListener {
             val intent = Intent(this, CreateAccountActivity::class.java)
+            startActivity(intent)
+        }
+        verifyAccountButton.setOnClickListener {
+            val intent = Intent(this, VerifyActivity::class.java)
             startActivity(intent)
         }
     }
@@ -73,29 +81,68 @@ class MainActivity : AppCompatActivity() {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
                 runOnUiThread {
-                    Toast.makeText(applicationContext, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
-                val map = responseBody?.removeSurrounding("{", "}")?.split(",")
-                    ?.associate {
-                        val (key, value) = it.split(":")
-                        key.trim().removeSurrounding("\"") to value.trim().removeSurrounding("\"")
-                    }
-                // Handle successful network response
-                if (response.isSuccessful) {
-                    // Process the JSON response...
+
+                if (responseBody == null) {
                     runOnUiThread {
-                        Toast.makeText(applicationContext, "${map?.get("message")}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(applicationContext, "No response from server. Try again soon", Toast.LENGTH_LONG).show()
                     }
-                } else {
+                    return
+                }
+
+                val loginResponse = ResponseUtil.parseJson(responseBody)
+
+                if (loginResponse == null) {
                     runOnUiThread {
-                        Toast.makeText(applicationContext, "${map?.get("message")}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(applicationContext, "Invalid response from server. Try again soon", Toast.LENGTH_LONG).show()
+                    }
+                    return
+                }
+
+                val message = loginResponse["message"]
+
+                if (message != null) {
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
                     }
                 }
+
+                if (!response.isSuccessful) {
+                    return
+                }
+
+                val sessionId = loginResponse["sessionId"]
+                val gameId = loginResponse["gameId"]
+                val accountId = loginResponse["accountId"]
+
+                // Should never happen
+                if (accountId == null || sessionId == null) {
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, "Server response missing data. Try again soon", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                if (sessionId != null) {
+                    StorageUtil.saveData("sessionId", sessionId)
+                }
+
+                if (accountId != null) {
+                    StorageUtil.saveData("accountId", accountId)
+                }
+
+                if (gameId != null) {
+                    StorageUtil.saveData("gameId", gameId)
+                }
+
+                val intent = Intent(this@MainActivity, OpenGamesActivity::class.java)
+                startActivity(intent)
             }
         })
     }
+
 }
