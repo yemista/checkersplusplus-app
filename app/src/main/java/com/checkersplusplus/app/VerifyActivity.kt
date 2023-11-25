@@ -24,73 +24,148 @@ class VerifyActivity : AppCompatActivity() {
         verificationCodeEditText = findViewById(R.id.verificationCodeEditText)
         usernameEditText = findViewById(R.id.usernameEditText)
         val sendButton: Button = findViewById(R.id.sendVerificationCodeButton)
+        val resendButton: Button = findViewById(R.id.resendVerificationCodeButton)
 
         sendButton.setOnClickListener {
-            sendVerificationCode()
+            val verificationCode = verificationCodeEditText.text.toString()
+
+            if (verificationCode == null) {
+                verificationCodeEditText.error = "Please enter a verification code"
+                return@setOnClickListener
+            }
+
+            val username = usernameEditText.text.toString()
+
+            if (username == null) {
+                usernameEditText.error = "Please enter a user name"
+                return@setOnClickListener
+            }
+
+            val client = OkHttpClient()
+            val json = JSONObject()
+            json.put("verificationCode", verificationCode)
+            json.put("username", username)
+
+            val mediaType = "application/json; charset=utf-8".toMediaType()
+            val requestBody = json.toString().toRequestBody(mediaType)
+            val request = Request.Builder()
+                .url(BuildConfig.BASE_URL + "/account/verify")
+                .post(requestBody)
+                .build()
+
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    // Handle failed network request
+                    runOnUiThread {
+                        Toast.makeText(applicationContext,
+                            "Network error. Failed to connect: ${e.message}",
+                            Toast.LENGTH_LONG)
+                            .show()
+                    }
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val responseBody = response.body?.string() ?: ""
+
+                    if (responseBody == null) {
+                        runOnUiThread {
+                            Toast.makeText(
+                                applicationContext,
+                                "No response from server. Try again soon",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+
+                    val createAccountResponse = ResponseUtil.parseJson(responseBody)
+
+                    if (createAccountResponse == null) {
+                        runOnUiThread {
+                            Toast.makeText(
+                                applicationContext,
+                                "Invalid response from server. Try again soon",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+
+                    val message = createAccountResponse["message"]
+
+                    if (message != null) {
+                        runOnUiThread {
+                            Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+
+                    if (response.isSuccessful) {
+                        val intent = Intent(this@VerifyActivity, MainActivity::class.java)
+                        startActivity(intent)
+                    }
+                }
+            })
         }
-    }
 
-    private fun sendVerificationCode() {
-        val verificationCode = verificationCodeEditText.text.toString()
-        val username = usernameEditText.text.toString()
-        val client = OkHttpClient()
-        val json = JSONObject()
-        json.put("verificationCode", verificationCode)
-        json.put("username", username)
+        resendButton.setOnClickListener {
+            val username = usernameEditText.text.toString()
 
-        val mediaType = "application/json; charset=utf-8".toMediaType()
-        val requestBody = json.toString().toRequestBody(mediaType)
-        val request = Request.Builder()
-            .url(BuildConfig.BASE_URL + "/account/verify")
-            .post(requestBody)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                // Handle failed network request
-                runOnUiThread {
-                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+            if (username == null) {
+                usernameEditText.error = "Please enter a user name"
+                return@setOnClickListener
             }
 
-            override fun onResponse(call: Call, response: Response) {
-                val responseBody = response.body?.string() ?: ""
+            val client = OkHttpClient()
+            val json = JSONObject()
+            json.put("username", username)
 
-                if (responseBody == null) {
+            val mediaType = "application/json; charset=utf-8".toMediaType()
+            val requestBody = json.toString().toRequestBody(mediaType)
+            val request = Request.Builder()
+                .url(BuildConfig.BASE_URL + "/account/sendVerification")
+                .post(requestBody)
+                .build()
+
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    // Handle failed network request
                     runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "No response from server. Try again soon",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
                     }
                 }
 
-                val createAccountResponse = ResponseUtil.parseJson(responseBody)
+                override fun onResponse(call: Call, response: Response) {
+                    val responseBody = response.body?.string() ?: ""
 
-                if (createAccountResponse == null) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "Invalid response from server. Try again soon",
-                            Toast.LENGTH_LONG
-                        ).show()
+                    if (responseBody == null) {
+                        runOnUiThread {
+                            Toast.makeText(
+                                applicationContext,
+                                "No response from server. Try again soon",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+
+                    val createAccountResponse = ResponseUtil.parseJson(responseBody)
+
+                    if (createAccountResponse == null) {
+                        runOnUiThread {
+                            Toast.makeText(
+                                applicationContext,
+                                "Invalid response from server. Try again soon",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+
+                    val message = createAccountResponse["message"]
+
+                    if (message != null) {
+                        runOnUiThread {
+                            Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
-
-                val message = createAccountResponse["message"]
-
-                if (message != null) {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
-                    }
-                }
-
-                if (response.isSuccessful) {
-                    val intent = Intent(this@VerifyActivity, MainActivity::class.java)
-                    startActivity(intent)
-                }
-            }
-        })
+            })
+        }
     }
 }

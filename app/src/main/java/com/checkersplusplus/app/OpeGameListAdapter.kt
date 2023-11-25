@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 
 class OpenGameListAdapter(private val list: List<OpenGameListItem>, private val onJoinClicked: (String) -> Unit)
@@ -24,13 +25,14 @@ class OpenGameListAdapter(private val list: List<OpenGameListItem>, private val 
 
     override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
         val item = list[position]
-        holder.blackIdTextView.text = item.blackId ?: ""
-        holder.redIdTextView.text = item.redId ?: ""
-
-        if (item.blackId != null) {
-            holder.joinButton.setOnClickListener { onJoinClicked(item.blackId) }
-        } else if (item.redId != null) {
-            holder.joinButton.setOnClickListener { onJoinClicked(item.redId) }
+        holder.blackIdTextView.text = item.blackId ?: "open"
+        holder.redIdTextView.text = item.redId ?: "open"
+        holder.joinButton.setOnClickListener { onJoinClicked(item.gameId) }
+        val context = holder.itemView.context
+        if (position % 2 == 0) {
+            holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.white))
+        } else {
+            holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.light_grey))
         }
     }
 

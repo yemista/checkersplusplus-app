@@ -125,6 +125,7 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         Toast.makeText(applicationContext, "Server response missing data. Try again soon", Toast.LENGTH_LONG).show()
                     }
+                    return
                 }
 
                 if (sessionId != null) {
@@ -136,11 +137,14 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 if (gameId != null) {
-                    StorageUtil.saveData("gameId", gameId)
+                    val intent = Intent(this@MainActivity, GameActivity::class.java)
+                    intent.putExtra("gameId", gameId)
+                    startActivity(intent)
+                } else {
+                    val intent = Intent(this@MainActivity, OpenGamesActivity::class.java)
+                    startActivity(intent)
                 }
 
-                val intent = Intent(this@MainActivity, OpenGamesActivity::class.java)
-                startActivity(intent)
             }
         })
     }

@@ -2,6 +2,7 @@ package com.checkersplusplus.app
 
 import android.content.Context
 import android.content.SharedPreferences
+import org.json.JSONArray
 import org.json.JSONObject
 
 object StorageUtil {
@@ -31,5 +32,9 @@ object ResponseUtil {
         }
 
         return map
+    }
+
+    fun parseJsonArray(content: String): JSONArray {
+        return JSONArray(content)
     }
 }

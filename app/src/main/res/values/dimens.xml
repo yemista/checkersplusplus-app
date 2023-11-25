@@ -3,4 +3,6 @@
     <dimen name="fab_margin">16dp</dimen>
     <dimen name="text_margin">16dp</dimen>
     <dimen name="divider_height">1dp</dimen>
+    <dimen name="checker_square_size">48dp</dimen>
+
 </resources>
