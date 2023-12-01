@@ -4,56 +4,46 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp">
-    <FrameLayout
-        android:id="@+id/checkersFrame"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-        <!-- GridLayout for the Checkerboard -->
-        <GridLayout
-            android:id="@+id/checkersBoard"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:columnCount="8"
-            android:rowCount="8"
-            android:background="@drawable/border_black"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/statusTextView"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
 
-        <ImageView
-            android:id="@+id/overlayImageView"
+    <com.checkersplusplus.app.CheckerBoardView
+        android:id="@+id/checkerBoardView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="@drawable/border_black"/>
+
+    <LinearLayout
+        android:id="@+id/buttonsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"> <!-- Initially hidden -->
+
+        <!-- Clear Button -->
+        <Button
+            android:id="@+id/clearButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Clear"/>
+
+        <!-- Move Button -->
+        <Button
+            android:id="@+id/moveButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Move"/>
+
+        <!-- Status TextView -->
+        <TextView
+            android:id="@+id/statusTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:visibility="invisible"/>
-    </FrameLayout>
+            android:textSize="24sp"
+            android:text="Status" />
 
-    <!-- Status TextView -->
-    <TextView
-        android:id="@+id/statusTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Status" />
-
-    <!-- Clear Button -->
-    <Button
-        android:id="@+id/clearButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Clear"/>
-
-    <!-- Move Button -->
-    <Button
-        android:id="@+id/moveButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Move"/>
-
-    <!-- Resign Button -->
-    <Button
-        android:id="@+id/resignButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Resign" />
-
+        <!-- Resign Button -->
+        <Button
+            android:id="@+id/resignButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Resign" />
+    </LinearLayout>
 </LinearLayout>

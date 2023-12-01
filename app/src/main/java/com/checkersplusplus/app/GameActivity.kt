@@ -1,10 +1,17 @@
 package com.checkersplusplus.app
 
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
-import android.util.TypedValue
+import android.util.DisplayMetrics
+import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.Button
 import android.widget.FrameLayout
@@ -23,7 +30,6 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import org.json.JSONObject
 import java.io.IOException
 
 class GameActivity : AppCompatActivity() {
@@ -31,6 +37,7 @@ class GameActivity : AppCompatActivity() {
     private var selectedSquares = ArrayList<View>()
     private var logicalBoard: Board = Board()
     private var playersTurn: Boolean = false
+    private var imageSize: Int = 0
 
     private fun onSquareClicked(view: View) {
         if (!playersTurn) {
@@ -50,101 +57,57 @@ class GameActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_game)
 
-        val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
-        val overlayImageView: ImageView = findViewById(R.id.overlayImageView)
+        val buttonsContainer: LinearLayout = findViewById(R.id.buttonsContainer)
+        val clearButton: Button = findViewById(R.id.clearButton)
 
-        checkersBoard.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
-            override fun onGlobalLayout() {
-                // Remove the listener to prevent being called multiple times
-                checkersBoard.viewTreeObserver.removeOnGlobalLayoutListener(this)
-
-                val params = FrameLayout.LayoutParams(checkersBoard.width, checkersBoard.height)
-                overlayImageView.layoutParams = params
-
-                // Optionally make the ImageView visible if required
-                overlayImageView.visibility = View.VISIBLE
-                
-                positionButtons(checkersBoard.width, checkersBoard.height)
-            }
-        })
-
-        createCheckersBoard(checkersBoard)
         setupActionListeners()
 
         val gameId = intent.getStringExtra("gameId")
 
         if (gameId == null) {
-            //restartApp()
+            restartApp()
         } else {
             //lookupGame(gameId)
+            updateCheckerBoard(Board())
         }
 
         //MobileAds.initialize(this) {}
         //loadRewardedAd()
     }
 
-    private fun positionButtons(width: Int, height: Int) {
-
+    private fun updateCheckerBoard(board: Board) {
+        var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+        checkersBoard.setLogicalGame(board)
+        checkersBoard.requestLayout()
+        checkersBoard.invalidate()
     }
 
     private fun setupActionListeners() {
         val clearButton: Button = findViewById(R.id.clearButton)
 
         clearButton.setOnClickListener {
-            selectedSquares.clear()
-            val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
-            createCheckersBoard(checkersBoard)
-            val board = logicalBoard.board
-            drawCheckers(board)
+//            selectedSquares.clear()
+//            val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
+//            createCheckersBoard(checkersBoard)
+//            val board = logicalBoard.board
+//            drawCheckers(board)
+            move()
         }
 
         val moveButton: Button = findViewById(R.id.moveButton)
 
-        moveButton.setOnClickListener {
-            val board = logicalBoard.board
-            selectedSquares.clear()
-            val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
-            createCheckersBoard(checkersBoard)
-            drawCheckers(board)
-        }
+//        moveButton.setOnClickListener {
+//            val board = logicalBoard.board
+//            selectedSquares.clear()
+//            val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
+//            createCheckersBoard(checkersBoard)
+//            drawCheckers(board)
+//        }
     }
 
-    private fun translateNumber(num: Int): Int {
-        when (num) {
-            0 -> return 7
-            1 -> return 6
-            2 -> return 5
-            3 -> return 4
-            4 -> return 3
-            5 -> return 2
-            6 -> return 1
-            7 -> return 0
-        }
-        throw IllegalArgumentException()
-    }
-
-    private fun drawCheckers(board: Array<Array<Checker>>) {
-        val gridSize = 8
-        val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
-        for (row in 0 until gridSize) {
-            for (col in 0 until gridSize) {
-                val position = row * checkersBoard.columnCount + col
-                val view: ImageView = checkersBoard.getChildAt(position) as ImageView
-                val checker: Checker = board[translateNumber(row)][col]
-
-                if (checker != null) {
-                    if (checker.color == com.checkersplusplus.engine.enums.Color.RED) {
-                        view.setImageResource(R.drawable.white_checker)
-                    }
-
-                    if (checker.color == com.checkersplusplus.engine.enums.Color.BLACK) {
-                        view.setImageResource(R.drawable.black_checker)
-                    }
-                }
-            }
-        }
-
-        checkersBoard.invalidate()
+    private fun move() {
+        var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+        checkersBoard.moveChecker(2, 2, 3, 3)
     }
 
     private fun startWebSocket() {
@@ -167,51 +130,6 @@ class GameActivity : AppCompatActivity() {
 
         // Ensure the client dispatcher is properly shut down on app exit
         webSocketClient.dispatcher.executorService.shutdown()
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            var gridLayout: GridLayout = findViewById(R.id.checkersBoard)
-            createCheckersBoard(gridLayout)
-            val board = logicalBoard.board
-            drawCheckers(board)
-        }
-    }
-
-    private fun createCheckersBoard(gridLayout: GridLayout) {
-        val totalColumns = 8 // For an 8x8 board
-        val size = Math.min(gridLayout.width, gridLayout.height) / totalColumns
-        gridLayout.removeAllViews() // Clear existing views if any
-        gridLayout.columnCount = totalColumns
-        gridLayout.rowCount = totalColumns
-        val displayMetrics = resources.displayMetrics
-        val screenWidth = displayMetrics.widthPixels
-        val gridSize = (screenWidth * 0.9).toInt()
-
-        for (i in 0 until totalColumns * totalColumns) {
-            val square = ImageView(this)
-            val row = i / totalColumns
-            val col = i % totalColumns
-            square.tag = Pair(row, col)
-            val layoutParams = GridLayout.LayoutParams()
-            layoutParams.width = size
-            layoutParams.height = size
-            layoutParams.rowSpec = GridLayout.spec(row)
-            layoutParams.columnSpec = GridLayout.spec(col)
-            square.layoutParams = layoutParams
-            square.setBackgroundColor(if ((i / totalColumns + i % totalColumns) % 2 == 1) Color.DKGRAY else Color.LTGRAY)
-            square.setOnClickListener { view ->
-                onSquareClicked(view)
-            }
-            gridLayout.addView(square)
-        }
-
-        // Set new layout parameters
-        val layoutParams = FrameLayout.LayoutParams(gridSize, gridSize)
-        gridLayout.layoutParams = layoutParams
-
-        gridLayout.requestLayout()
     }
 
     private fun lookupGame(gameId: String) {
@@ -288,19 +206,19 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onResponse(call: Call, response: Response) {
-                runOnUiThread {
-                    if (response.isSuccessful) {
-                        runOnUiThread {
-                            val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
-                            createCheckersBoard(checkersBoard)
-                        }
-                    } else {
-                        runOnUiThread {
-                            Toast.makeText(this@GameActivity, "Error", Toast.LENGTH_SHORT).show()
-                            finish() // Close the current activity
-                        }
-                    }
-                }
+//                runOnUiThread {
+//                    if (response.isSuccessful) {
+//                        runOnUiThread {
+//                            val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
+//                            createCheckersBoard(checkersBoard)
+//                        }
+//                    } else {
+//                        runOnUiThread {
+//                            Toast.makeText(this@GameActivity, "Error", Toast.LENGTH_SHORT).show()
+//                            finish() // Close the current activity
+//                        }
+//                    }
+//                }
             }
         })
     }
@@ -312,4 +230,9 @@ class GameActivity : AppCompatActivity() {
         finish()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+        checkersBoard.releaseResources()
+    }
 }
