@@ -57,6 +57,8 @@ class GameActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_game)
 
+        val view: CheckerBoardView = findViewById(R.id.checkerBoardView)
+
         val buttonsContainer: LinearLayout = findViewById(R.id.buttonsContainer)
         val clearButton: Button = findViewById(R.id.clearButton)
 
@@ -86,28 +88,18 @@ class GameActivity : AppCompatActivity() {
         val clearButton: Button = findViewById(R.id.clearButton)
 
         clearButton.setOnClickListener {
-//            selectedSquares.clear()
-//            val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
-//            createCheckersBoard(checkersBoard)
-//            val board = logicalBoard.board
-//            drawCheckers(board)
-            move()
+            var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+            checkersBoard.clearSelected()
         }
 
         val moveButton: Button = findViewById(R.id.moveButton)
 
-//        moveButton.setOnClickListener {
-//            val board = logicalBoard.board
-//            selectedSquares.clear()
-//            val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
-//            createCheckersBoard(checkersBoard)
-//            drawCheckers(board)
-//        }
-    }
-
-    private fun move() {
-        var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
-        checkersBoard.moveChecker(2, 2, 3, 3)
+        moveButton.setOnClickListener {
+            val board = logicalBoard.board
+            selectedSquares.clear()
+            var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+            checkersBoard.move()
+        }
     }
 
     private fun startWebSocket() {
