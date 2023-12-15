@@ -29,24 +29,13 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
     private var checkersCreated: Boolean = false
     private val checkerSquares = mutableListOf<CheckerSquare>()
     private val selectedSquares = mutableListOf<CheckerSquare>()
+    private var isBlack = true
+    private var isMyTurn = true
 
     private val borderPaint = Paint().apply {
         color = Color.BLACK // Set border color
         style = Paint.Style.STROKE // Stroke style for the border
         strokeWidth = 4f // Set the width of the border
-    }
-
-    private val whiteChecker: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.white_checker)
-    private val blackChecker: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.black_checker)
-
-    init {
-        // Example: Create an 8x8 grid
-        val squareSize = width / 8f
-        for (i in 0 until 8) {
-            for (j in 0 until 8) {
-                checkerSquares.add(CheckerSquare(i * squareSize, j * squareSize, translateNumber(i), j, squareSize))
-            }
-        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -70,24 +59,37 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         selectedSquares.clear()
     }
 
-    fun move() {
+    fun move(): Boolean {
         if (selectedSquares.isEmpty() || selectedSquares.size < 2) {
-            return
+            return false
         }
 
         val square1 = selectedSquares[0]
         val square2 = selectedSquares[1]
         moveChecker(square1.row, square1.col, square2.row, square2.col)
+        return true
+    }
+
+    fun resetBoard(board: Board) {
+        releaseResources()
+        checkersCreated = false
+        setLogicalGame(board)
+        requestLayout()
+        invalidate()
     }
 
     private fun createCheckers() {
         val squareSize = width / 8f
+        val whiteChecker: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.white_checker)
+        val blackChecker: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.black_checker)
 
         for (row in 0 until 8) {
             for (col in 0 until 8) {
                 val checker: Checker? = board?.getPiece(Coordinate(col, row))
 
                 if (checker != null) {
+                    val positionRow = row
+                    val locationRow = if (isBlack) translateNumber(row) else row
                     bitmapInfo.add(
                         CheckersBitmapLocationInfo(
                             Bitmap.createScaledBitmap(
@@ -96,8 +98,9 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                                 (squareSize.toInt() * BITMAP_SCALE_FACTOR).toInt(),
                                 false
                             ),
-                            (row * squareSize + (squareSize * BITMAP_OFFSET)).toFloat(),
-                            (col * squareSize + (squareSize * BITMAP_OFFSET)).toFloat(), translateNumber(row), col, false
+                            (col * squareSize + (squareSize * BITMAP_OFFSET)).toFloat(),
+                            (locationRow * squareSize + (squareSize * BITMAP_OFFSET)).toFloat(),
+                            positionRow, col, false
                         )
                     )
                 }
@@ -109,13 +112,13 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
         for (info in bitmapInfo) {
             if (!info.moving) {
-                canvas.drawBitmap(info.bitmap, info.y, info.x, null)
+                canvas.drawBitmap(info.bitmap, info.x, info.y, null)
             }
         }
 
         for (info in bitmapInfo) {
             if (info.moving) {
-                canvas.drawBitmap(info.bitmap, info.y, info.x, null)
+                canvas.drawBitmap(info.bitmap, info.x, info.y, null)
             }
         }
     }
@@ -148,8 +151,8 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
         val duration = distance(fromRow, fromCol, toRow, toCol) * (1500 / 8)
         val squareSize = width / 8
-        animateCheckerMove(entry, entry.y, entry.x,
-            square.y + (squareSize * BITMAP_OFFSET), square.x + (squareSize * BITMAP_OFFSET), duration)
+        animateCheckerMove(entry, entry.x, entry.y,
+            square.x + (squareSize * BITMAP_OFFSET), square.y + (squareSize * BITMAP_OFFSET), duration)
         entry.row = toRow
         entry.col = toCol
     }
@@ -160,9 +163,11 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         checkerSquares.clear()
         val squareSize = newWidth / 8f
 
-        for (i in 0 until 8) {
-            for (j in 0 until 8) {
-                checkerSquares.add(CheckerSquare(i * squareSize, j * squareSize, translateNumber(j), i, squareSize))
+        for (i in 7 downTo  0) {
+            for (j in 7 downTo  0) {
+                val positionRow = if (isBlack) i else translateNumber(i)
+                val locationRow = if (isBlack) translateNumber(j) else j
+                checkerSquares.add(CheckerSquare(i * squareSize, j * squareSize, locationRow, i, squareSize))
             }
         }
     }
@@ -194,13 +199,14 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 var square : CheckerSquare? = null
 
                 for (sq in checkerSquares) {
-                    if (sq.row == row && sq.col == col) {
+                    if (translateNumber(sq.row) == row && translateNumber(sq.col) == col) {
                         square = sq
                         break
                     }
                 }
 
-                if ((row + col) % 2 == 0) {
+                val remainder = if (isBlack) 0 else 1
+                if ((row + col) % 2 == remainder) {
                     paint.color = ContextCompat.getColor(context, R.color.tan);
                 } else {
                     paint.color = Color.DKGRAY
@@ -241,19 +247,17 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         }
     }
 
-    // Handle touch events if necessary
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN) {
+        if (event.action == MotionEvent.ACTION_DOWN && isMyTurn) {
             val x = event.x
             val y = event.y
 
             checkerSquares.forEach { square ->
-                // Check if the touch is within the bounds of the square
                 if (x >= square.x && x <= square.x + square.size &&
                     y >= square.y && y <= square.y + square.size) {
-                    square.isSelected = !square.isSelected // Toggle selection
+                    Log.e("COORD", square.row.toString() + "-" + square.col.toString())
+                    square.isSelected = !square.isSelected
                     invalidate()
-                    // Log.e("COORD", square.row.toString() + "-" + square.col.toString())
                     selectedSquares.add(square)
                     return true
                 }
@@ -262,7 +266,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         return super.onTouchEvent(event)
     }
 
-    fun animateCheckerMove(checker: CheckersBitmapLocationInfo, fromX: Float, fromY: Float, toX: Float, toY: Float, duration: Long) {
+    private fun animateCheckerMove(checker: CheckersBitmapLocationInfo, fromX: Float, fromY: Float, toX: Float, toY: Float, duration: Long) {
         val animatorX = ObjectAnimator.ofFloat(checker, "x", toX)
         val animatorY = ObjectAnimator.ofFloat(checker, "y", toY)
 
@@ -274,13 +278,13 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         animatorX.addUpdateListener {
             val iterator = bitmapInfo.iterator()
 
-            //Log.e("CHECKER X-Y", checker.x.toString() + "-" + checker.y.toString())
             while (iterator.hasNext()) {
                 val entry = iterator.next()
 
-                //Log.e("ENTRY X-Y", entry.x.toString() + "-" + entry.y.toString())
                 if (checker != entry && overlap(checker, entry)) {
+                    val temp: CheckersBitmapLocationInfo = checker
                     iterator.remove()
+                    removedBitmapInfo.add(temp)
                     break
                 }
             }
@@ -311,9 +315,6 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         for (bitmapEntry in removedBitmapInfo) {
             bitmapEntry.bitmap?.recycle()
         }
-
-        whiteChecker?.recycle()
-        blackChecker?.recycle()
     }
 
     fun setLogicalGame(board: Board) {
@@ -332,6 +333,18 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
             7 -> return 0
         }
         throw IllegalArgumentException()
+    }
+
+    fun setIsMyTurn(myTurn: Boolean) {
+        isMyTurn = myTurn
+    }
+
+    fun setIsBlack(black: Boolean) {
+        isBlack = black
+    }
+
+    fun getSelectedSquares(): List<CheckerSquare> {
+        return selectedSquares.toList()
     }
 
 }

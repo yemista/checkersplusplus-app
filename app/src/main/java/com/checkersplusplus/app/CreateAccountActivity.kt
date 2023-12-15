@@ -108,7 +108,7 @@ class CreateAccountActivity : AppCompatActivity() {
         val requestBody = json.toString().toRequestBody(mediaType)
 
         val request = Request.Builder()
-            .url(BuildConfig.BASE_URL + "/account/create")
+            .url("http://" + BuildConfig.BASE_URL + "/account/create")
             .post(requestBody)
             .build()
 

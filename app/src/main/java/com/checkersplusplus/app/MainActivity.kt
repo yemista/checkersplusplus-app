@@ -3,6 +3,7 @@ package com.checkersplusplus.app
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -43,11 +44,11 @@ class MainActivity : AppCompatActivity() {
 
         // Set up the button click listeners
         loginButton.setOnClickListener {
-            //performLogin()
+            performLogin()
 
-            val intent = Intent(this@MainActivity, GameActivity::class.java)
-            intent.putExtra("gameId", "123")
-            startActivity(intent)
+//            val intent = Intent(this@MainActivity, GameActivity::class.java)
+//            intent.putExtra("gameId", "123")
+//            startActivity(intent)
         }
         createAccountButton.setOnClickListener {
             val intent = Intent(this, CreateAccountActivity::class.java)
@@ -76,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         val client = OkHttpClient()
         val requestBody = jsonBody.toRequestBody(jsonMediaType)
         val request = Request.Builder()
-            .url(BuildConfig.BASE_URL + "/account/login")
+            .url("http://" + BuildConfig.BASE_URL + "/account/login")
             .post(requestBody)
             .build()
 
@@ -112,7 +113,7 @@ class MainActivity : AppCompatActivity() {
 
                 if (message != null) {
                     runOnUiThread {
-                        Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
+                        Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
                     }
                 }
 

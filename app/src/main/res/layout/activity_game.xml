@@ -37,13 +37,22 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="24sp"
-            android:text="Status" />
+            android:text="Status"
+            android:textColor="@android:color/black"/>
 
         <!-- Resign Button -->
         <Button
             android:id="@+id/resignButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Resign" />
+            android:text="Resign"
+            android:visibility="gone"/>
+
+        <!-- Cancel Button -->
+        <Button
+            android:id="@+id/cancelButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cancel" />
     </LinearLayout>
 </LinearLayout>

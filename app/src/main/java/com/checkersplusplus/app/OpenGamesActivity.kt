@@ -4,15 +4,19 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.json.JSONObject
 import java.io.IOException
 
 class OpenGamesActivity : AppCompatActivity() {
@@ -23,8 +27,24 @@ class OpenGamesActivity : AppCompatActivity() {
         val recyclerView: RecyclerView = findViewById(R.id.myRecyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
+        val createGameButton: Button = findViewById(R.id.createGameButton)
+        createGameButton.setOnClickListener {
+            createGame()
+        }
+
+        val refreshGamesButton: Button = findViewById(R.id.refreshGamesButton)
+        refreshGamesButton.setOnClickListener {
+            fetchDataFromServer()
+        }
+
         fetchDataFromServer()
     }
+
+    override fun onResume() {
+        super.onResume()
+        fetchDataFromServer()
+    }
+
 
     fun parseResponse(responseData: String?): List<OpenGameListItem> {
         if (responseData == null || responseData == "") {
@@ -82,11 +102,57 @@ class OpenGamesActivity : AppCompatActivity() {
         return listOf<OpenGameListItem>()
     }
 
+    private fun joinGame(gameId: String) {
+        val client = OkHttpClient()
+        val sessionId = StorageUtil.getData("sessionId")
+        val json = JSONObject()
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val requestBody = json.toString().toRequestBody(mediaType)
+        val request = Request.Builder()
+            .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/join")
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+
+                if (responseBody == null) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            applicationContext,
+                            "Invalid response from server. Try again soon",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
+                    return
+                }
+
+                val game = ResponseUtil.parseJson(responseBody)
+
+                if (response.isSuccessful) {
+                    val intent = Intent(this@OpenGamesActivity, GameActivity::class.java)
+                    intent.putExtra("gameId", gameId)
+                    startActivity(intent)
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, game["message"], Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        })
+    }
+
     fun updateUI(listItems: List<OpenGameListItem>) {
         val adapter = OpenGameListAdapter(listItems) { joinId ->
-            val intent = Intent(this, GameActivity::class.java)
-            intent.putExtra("gameId", joinId)
-            startActivity(intent)
+            joinGame(joinId)
         }
         val recyclerView: RecyclerView = findViewById(R.id.myRecyclerView)
         val dividerHeight = resources.getDimensionPixelSize(R.dimen.divider_height) // Define this in your dimens.xml
@@ -99,7 +165,7 @@ class OpenGamesActivity : AppCompatActivity() {
     private fun fetchDataFromServer() {
         val client = OkHttpClient()
         val request = Request.Builder()
-            .url(BuildConfig.BASE_URL + "/game/open")
+            .url("http://" + BuildConfig.BASE_URL + "/game/open")
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -112,12 +178,57 @@ class OpenGamesActivity : AppCompatActivity() {
             override fun onResponse(call: Call, response: Response) {
                 if (response.isSuccessful) {
                     val responseData = response.body?.string()
-                    if (responseData != null) {
-                        Log.e("response", responseData)
-                    }
                     val listItems = parseResponse(responseData)
                     runOnUiThread {
                         updateUI(listItems)
+                    }
+                }
+            }
+        })
+    }
+
+    private fun createGame() {
+        val client = OkHttpClient()
+        val sessionId = StorageUtil.getData("sessionId")
+        val json = JSONObject()
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val requestBody = json.toString().toRequestBody(mediaType)
+        val request = Request.Builder()
+            .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId +"/create")
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+
+                if (responseBody == null) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            applicationContext,
+                            "Invalid response from server. Try again soon",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
+                    return
+                }
+
+                val game = ResponseUtil.parseJson(responseBody)
+
+                if (response.isSuccessful) {
+                    val intent = Intent(this@OpenGamesActivity, GameActivity::class.java)
+                    intent.putExtra("gameId", game["gameId"])
+                    startActivity(intent)
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, game["message"], Toast.LENGTH_LONG).show()
                     }
                 }
             }
