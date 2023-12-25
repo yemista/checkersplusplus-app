@@ -22,11 +22,20 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.checkersplusplus.engine.Board
+import com.checkersplusplus.engine.Coordinate
+import com.checkersplusplus.engine.CoordinatePair
 import com.checkersplusplus.engine.pieces.Checker
+import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.FormBody
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -41,7 +50,10 @@ import java.io.IOException
 
 class GameActivity : AppCompatActivity() {
     private lateinit var webSocketClient: OkHttpClient
+    private lateinit var webSocket: WebSocket
     private var playersTurn : Boolean = false
+    private var currentMove: Int = 0
+    private val lock = Any()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,14 +97,19 @@ class GameActivity : AppCompatActivity() {
             var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
 
             if (checkersBoard.move()) {
-               //postRequest()
+               sendMove()
+               checkersBoard.doMove()
+               checkersBoard.clearSelected()
+            } else {
+                Log.e("ILLEGAL", "ILLEGAL")
+                Log.e("BOARD", checkersBoard.board.toString())
             }
         }
 
         val resignButton: Button = findViewById(R.id.resignButton)
 
         resignButton.setOnClickListener {
-            //forfeitGame()
+            forfeitGame()
         }
 
         val cancelButton: Button = findViewById(R.id.cancelButton)
@@ -102,14 +119,66 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
+    private fun forfeitGame() {
+        val client = OkHttpClient()
+        val sessionId = StorageUtil.getData("sessionId")
+        val json = JSONObject()
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val requestBody = json.toString().toRequestBody(mediaType)
+        val gameId = intent.getStringExtra("gameId")
+        val request = Request.Builder()
+            .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/forfeit")
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+
+                if (responseBody == null) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            applicationContext,
+                            "Invalid response from server. Try again soon",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
+                    return
+                }
+
+                val game = ResponseUtil.parseJson(responseBody)
+
+                if (response.isSuccessful) {
+                    val intent = Intent(this@GameActivity, OpenGamesActivity::class.java)
+                    startActivity(intent)
+                    finish()
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, game["message"], Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        })
+    }
+
     private fun startWebSocket() {
         val request = Request.Builder().url("ws://" + BuildConfig.BASE_URL + "/updates").build()
         val listener = object : WebSocketListener() {
             override fun onMessage(webSocket: WebSocket, message: String) {
-                Log.e("MESSAGE", message)
+                Log.e("MESSAGE-WS", message)
                 if (message.startsWith("MOVE")) {
-
-                }  else if (message.startsWith("TIMEOUT")) {
+                    val parts = message.split('|')
+                    processMoveFromServer(parts[1], parts[2])
+                } else if (message.startsWith("TIMEOUT_LOSS")) {
+                    showEndGameDialog("You timed out. You lose.")
+                } else if (message.startsWith("TIMEOUT")) {
                     showEndGameDialog("Opponent timed out. You win.")
                 } else if (message.startsWith("FORFEIT")) {
                     showEndGameDialog("Opponent forfeits. You win.")
@@ -144,11 +213,103 @@ class GameActivity : AppCompatActivity() {
             // Implement other WebSocketListener methods as necessary
         }
 
-        val webSocket = webSocketClient.newWebSocket(request, listener)
+        webSocket = webSocketClient.newWebSocket(request, listener)
         val sessionId = StorageUtil.getData("sessionId")
         webSocket.send(sessionId)
+
+        lifecycleScope.launch(Dispatchers.IO) { // Starts a coroutine in the background thread
+            // Code to run in background
+            // For example, a network call or database operation
+            val sessionId = StorageUtil.getData("sessionId")
+            webSocket.send(sessionId)
+            Thread.sleep(1000 * 60)
+
+            withContext(Dispatchers.Main) {
+                // Code to run on the main thread, like updating the UI
+            }
+        }
+
         // Ensure the client dispatcher is properly shut down on app exit
         webSocketClient.dispatcher.executorService.shutdown()
+    }
+
+    private fun processMoveFromServer(moveNum: String, moveList: String) {
+        val num = moveNum.toIntOrNull()
+
+        if (num == null) {
+            restartApp()
+        }
+
+        var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+        val movesToAnimate = arrayListOf<Pair<Pair<Int, Int>, Pair<Int, Int>>>()
+        val coordinatePairs = arrayListOf<CoordinatePair>()
+
+        synchronized(lock) {
+            Log.e("MOVENUM", currentMove.toString() + "-" + num.toString())
+            if (num == currentMove + 1) {
+                val moves = moveList.split('+')
+
+                for (move in moves) {
+                    if (move.isEmpty()) {
+                        continue
+                    }
+
+                    // Log.e("MOVE", move)
+                    val parts = move.split('-')
+                    val start = parts[0]
+                    // Log.e("START", start)
+                    val starts = start.split(',')
+                    val startRow = if (starts[0].startsWith("r")) parseOutNumber(starts[0]) else parseOutNumber(starts[1])
+                    val startCol = if (starts[0].startsWith("c")) parseOutNumber(starts[0]) else parseOutNumber(starts[1])
+                    val end = parts[1]
+                    val ends = end.split(',')
+                    val endRow = if (ends[0].startsWith("r")) parseOutNumber(ends[0]) else parseOutNumber(ends[1])
+                    val endCol = if (ends[0].startsWith("c")) parseOutNumber(ends[0]) else parseOutNumber(ends[1])
+                    coordinatePairs.add(CoordinatePair(Coordinate(startCol, startRow), Coordinate(endCol, endRow)))
+                    val fromRow = if (checkersBoard.isBlack) translateNumber(startRow) else startRow
+                    val fromCol = if (!checkersBoard.isBlack) translateNumber(startCol) else startCol
+                    val toRow = if (checkersBoard.isBlack) translateNumber(endRow) else endRow
+                    val toCol = if (!checkersBoard.isBlack) translateNumber(endCol) else endCol
+
+                    Log.e("SERVER_COORD", "R:" + fromRow.toString() + "-C:" + fromCol.toString() + ",R:" + toRow.toString() + "-C:" + toCol.toString())
+
+                    movesToAnimate.add(Pair(Pair(fromRow, fromCol), Pair(toRow, toCol)))
+                }
+                Log.e("SERVER_COORD", "2")
+                currentMove++
+                setTurn(true)
+                checkersBoard.board!!.commitMoves(coordinatePairs)
+            }
+        }
+        Log.e("SERVER_COORD", "3")
+        runOnUiThread {
+            Log.e("SERVER_COORD", "4")
+            for (move in movesToAnimate) {
+                Log.e("SERVER_COORD", "5")
+                val fromRow = move.first.first
+                val fromCol = move.first.second
+                val toRow = move.second.first
+                val toCol = move.second.second
+                checkersBoard.moveCheckerFromServer(fromRow, fromCol, toRow, toCol)
+            }
+        }
+    }
+
+    private fun setTurn(myTurn: Boolean) {
+        val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+        checkersBoard.setIsMyTurn(myTurn)
+        val status: TextView = findViewById(R.id.statusTextView)
+
+        if (myTurn) {
+            status.text = "Your turn"
+        } else {
+            status.text = "Opponents turn"
+        }
+    }
+
+    private fun parseOutNumber(part: String): Int {
+        val pieces = part.split(':')
+        return pieces[1].toIntOrNull()!!
     }
 
     private fun lookupGame(gameId: String) {
@@ -203,7 +364,7 @@ class GameActivity : AppCompatActivity() {
                         ).show()
                     }
                 }
-                Log.e("STATE", game.toString())
+
                 if (game["gameState"] != null) {
 
                     val logicalBoard = Board(game["gameState"])
@@ -213,6 +374,7 @@ class GameActivity : AppCompatActivity() {
                         restartApp()
                     }
 
+                    currentMove = parseCurrentMove(game["gameState"]!!)
                     playersTurn = accountId == game["currentTurnId"]
                     val isBlack = accountId == game["blackAccountId"]
                     val notStarted = game["blackAccountId"] == null || game["redAccountId"] == null
@@ -245,30 +407,89 @@ class GameActivity : AppCompatActivity() {
         })
     }
 
-    private fun createMoveListForPost(): RequestBody {
-        val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-        var jsonBody = "["
+    private fun parseCurrentMove(state: String): Int {
+        val parts = state.split('|')
+        Log.e("STATE2", state)
+        val num = parts[1].toIntOrNull()
+
+        if (num == null) {
+            restartApp()
+        }
+
+        return num!!
+    }
+
+    private fun translateNumber(num: Int): Int {
+        when (num) {
+            0 -> return 7
+            1 -> return 6
+            2 -> return 5
+            3 -> return 4
+            4 -> return 3
+            5 -> return 2
+            6 -> return 1
+            7 -> return 0
+        }
+        throw IllegalArgumentException()
+    }
+
+    private fun createCoordinatePairsForMove(): List<CoordinatePair> {
         val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
         val squares = checkersBoard.getSelectedSquares()
         var lastSquare = squares[0]
+        val moveList = mutableListOf<CoordinatePair>()
 
         for (square in squares) {
-            jsonBody += "{\"startCol\":\"${lastSquare.col},\"startRow\":\"${lastSquare.row}\",\"endCol\":\"${square.col},\"endRow\":\"${square.row}\"}"
+            if (square == lastSquare) {
+                continue
+            }
+
+            val fromRow = if (checkersBoard.isBlack) translateNumber(lastSquare.row) else lastSquare.row
+            val fromCol = if (!checkersBoard.isBlack) translateNumber(lastSquare.col) else lastSquare.col
+            val toRow = if (checkersBoard.isBlack) translateNumber(square.row) else square.row
+            val toCol = if (!checkersBoard.isBlack) translateNumber(square.col) else square.col
+            moveList.add(CoordinatePair(Coordinate(fromCol, fromRow), Coordinate(toCol, toRow)))
             lastSquare = square
         }
 
-        jsonBody += "]"
-        return jsonBody.toRequestBody(jsonMediaType)
+        return moveList
     }
 
-    fun postRequest() {
+    private fun createMoveListForPost(): List<Move> {
+        val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+        val squares = checkersBoard.getSelectedSquares()
+        var lastSquare = squares[0]
+        val moveList = mutableListOf<Move>()
+
+        for (square in squares) {
+            if (square == lastSquare) {
+                continue
+            }
+
+            val fromRow = if (checkersBoard.isBlack) translateNumber(lastSquare.row) else lastSquare.row
+            val fromCol = if (!checkersBoard.isBlack) translateNumber(lastSquare.col) else lastSquare.col
+            val toRow = if (checkersBoard.isBlack) translateNumber(square.row) else square.row
+            val toCol = if (!checkersBoard.isBlack) translateNumber(square.col) else square.col
+            moveList.add(Move(fromCol, fromRow, toCol, toRow))
+            lastSquare = square
+        }
+
+        return moveList
+    }
+
+    private fun sendMove() {
         val client = OkHttpClient()
+        val gson = Gson()
+        val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
         val requestBody = createMoveListForPost()
+        val jsonString = gson.toJson(requestBody)
+        val body = RequestBody.create(mediaType, jsonString)
         val sessionId = StorageUtil.getData("sessionId")
         val gameId = intent.getStringExtra("gameId")
+        Log.e("GAMEID", requestBody.toString())
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/game/{$sessionId}/{$gameId}/move")
-            .post(requestBody)
+            .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/move")
+            .post(body)
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -280,19 +501,32 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onResponse(call: Call, response: Response) {
-//                runOnUiThread {
-//                    if (response.isSuccessful) {
-//                        runOnUiThread {
-//                            val checkersBoard: GridLayout = findViewById(R.id.checkersBoard)
-//                            createCheckersBoard(checkersBoard)
-//                        }
-//                    } else {
-//                        runOnUiThread {
-//                            Toast.makeText(this@GameActivity, "Error", Toast.LENGTH_SHORT).show()
-//                            finish() // Close the current activity
-//                        }
-//                    }
-//                }
+                if (response.isSuccessful) {
+                    currentMove++
+                    val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+                    //checkersBoard.board!!.commitMoves(moves)
+                    checkersBoard.setIsMyTurn(false)
+                } else {
+                    val responseBody = response.body?.string()
+
+                    if (responseBody == null) {
+                        runOnUiThread {
+                            Toast.makeText(
+                                applicationContext,
+                                "Invalid response from server. Try again soon",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+
+                        return
+                    }
+
+                    val game = ResponseUtil.parseJson(responseBody)
+
+                    runOnUiThread {
+                        Toast.makeText(this@GameActivity, game["message"].toString(), Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         })
     }
