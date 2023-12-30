@@ -36,6 +36,7 @@ class GameActivity : AppCompatActivity() {
     private lateinit var webSocket: WebSocket
     private var playersTurn : Boolean = false
     private var currentMove: Int = 0
+    private var gameStarted : Boolean = false
     private val lock = Any()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,7 +80,7 @@ class GameActivity : AppCompatActivity() {
         moveButton.setOnClickListener {
             var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
 
-            if (checkersBoard.move()) {
+            if (checkersBoard.shouldDoMove()) {
                sendMove()
                runOnUiThread {
                    checkersBoard.doMove()
@@ -101,12 +102,14 @@ class GameActivity : AppCompatActivity() {
 
         resignButton.setOnClickListener {
             forfeitGame()
+            gameStarted = false
         }
 
         val cancelButton: Button = findViewById(R.id.cancelButton)
 
         cancelButton.setOnClickListener {
             cancelGame()
+            gameStarted = false
         }
     }
 
@@ -147,9 +150,7 @@ class GameActivity : AppCompatActivity() {
                 val game = ResponseUtil.parseJson(responseBody)
 
                 if (response.isSuccessful) {
-                    val intent = Intent(this@GameActivity, OpenGamesActivity::class.java)
-                    startActivity(intent)
-                    finish()
+                    showEndGameDialog("You resigned")
                 } else {
                     runOnUiThread {
                         Toast.makeText(applicationContext, game["message"], Toast.LENGTH_LONG).show()
@@ -181,6 +182,8 @@ class GameActivity : AppCompatActivity() {
                 } else if (message.startsWith("DRAW")) {
                     showEndGameDialog("Draw.")
                 } else if (message.startsWith("BEGIN")) {
+                    gameStarted = true
+
                     runOnUiThread {
                         val cancelButton: Button = findViewById(R.id.cancelButton)
                         cancelButton.visibility = View.GONE
@@ -396,6 +399,7 @@ class GameActivity : AppCompatActivity() {
                         if (notStarted) {
                             status.text = "Waiting for opponent"
                         } else {
+                            gameStarted = true
                             val cancelButton: Button = findViewById(R.id.cancelButton)
                             cancelButton.visibility = View.GONE
                             cancelButton.invalidate()
@@ -519,6 +523,8 @@ class GameActivity : AppCompatActivity() {
 
     private fun showEndGameDialog(message: String) {
         runOnUiThread {
+            gameStarted = false
+
             // Create an AlertDialog builder
             val builder = AlertDialog.Builder(this)
 
@@ -547,7 +553,13 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
+    override fun onBackPressed() {
+        if (!gameStarted) {
+            super.onBackPressed()
+        } else {
 
+        }
+    }
 
     private fun restartApp() {
         val restartIntent = Intent(this, MainActivity::class.java)

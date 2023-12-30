@@ -10,7 +10,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
@@ -86,7 +85,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         game!!.doMove(coordinatesPairs)
     }
 
-    fun move(): Boolean {
+    fun shouldDoMove(): Boolean {
         if (selectedSquares.isEmpty() || selectedSquares.size < 2) {
             return false
         }
@@ -244,9 +243,60 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
         val duration = distance(fromRow, fromCol, toRow, toCol) * (1500 / 8)
         val squareSize = width / 8
-        animateCheckerMove(entry,
-            square.x + (squareSize * BITMAP_OFFSET), square.y + (squareSize * BITMAP_OFFSET),
-            duration, from, to, toRow, toCol)
+
+        if (isCornerJump(fromRow, fromCol, toRow, toCol)) {
+            val square2 = square
+            var square1: CheckerSquare? = null
+            var square1ToRow: Int? = null
+            var square1ToCol: Int? = null
+
+            square1ToCol = if (toCol == 6) {
+                7
+            } else {
+                0
+            }
+
+            square1ToRow = if (toRow > fromRow) {
+                fromRow + 1
+            } else {
+                fromRow - 1
+            }
+
+            for (sq in checkerSquares) {
+                if (sq.row == square1ToRow && sq.col == square1ToCol) {
+                    square1 = sq
+                    break
+                }
+            }
+
+            animateCornerJumpPart1(
+                entry,
+                square1!!.x + (squareSize * BITMAP_OFFSET), square1!!.y + (squareSize * BITMAP_OFFSET),
+                duration / 2, from, to, toRow, toCol, square2.x + (squareSize * BITMAP_OFFSET),
+                square2.y + (squareSize * BITMAP_OFFSET))
+        } else {
+            animateCheckerMove(
+                entry,
+                square.x + (squareSize * BITMAP_OFFSET), square.y + (squareSize * BITMAP_OFFSET),
+                duration, from, to, toRow, toCol
+            )
+        }
+    }
+
+    private fun isCornerJump(fromRow: Int, fromCol: Int, toRow: Int, toCol: Int): Boolean {
+        if (fromCol != toCol) {
+            return false;
+        }
+
+        if (fromCol != 1 && toCol != 6) {
+            return false;
+        }
+
+        if (Math.abs(fromRow - toRow) != 2) {
+            return false;
+        }
+
+        return true;
     }
 
     override fun onSizeChanged(newWidth: Int, newHeight: Int, oldWidth: Int, oldHeight: Int) {
@@ -426,6 +476,68 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                     break
                 }
             }
+            invalidate()
+        }
+        animatorX.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                checker.row = toRow
+                checker.col = toCol
+                moveChecker(to, to + 1)
+            }
+        })
+        animatorY.addUpdateListener { invalidate() }
+
+        animatorX.start()
+        animatorY.start()
+    }
+
+    private fun animateCornerJumpPart1(checker: CheckersBitmapLocationInfo, toX: Float, toY: Float,
+                                   duration: Long, from: Int, to: Int,
+                                   toRow: Int, toCol: Int, toXPart2: Float, toYPart2: Float) {
+        val animatorX = ObjectAnimator.ofFloat(checker, "x", toX)
+        val animatorY = ObjectAnimator.ofFloat(checker, "y", toY)
+
+        checker.moving = true
+        animatorX.duration = duration
+        animatorY.duration = duration
+
+        animatorX.addUpdateListener {
+            val iterator = bitmapInfo.iterator()
+
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+
+                if (checker != entry && overlap(checker, entry)) {
+                    val temp: CheckersBitmapLocationInfo = checker
+                    iterator.remove()
+                    removedBitmapInfo.add(temp)
+                    break
+                }
+            }
+            invalidate()
+        }
+        animatorX.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                animateCornerJumpPart2(checker, toXPart2, toYPart2, duration, from, to, toRow, toCol)
+            }
+        })
+        animatorY.addUpdateListener { invalidate() }
+
+        animatorX.start()
+        animatorY.start()
+    }
+
+    private fun animateCornerJumpPart2(checker: CheckersBitmapLocationInfo, toX: Float, toY: Float,
+                                       duration: Long, from: Int, to: Int,
+                                       toRow: Int, toCol: Int) {
+        val animatorX = ObjectAnimator.ofFloat(checker, "x", toX)
+        val animatorY = ObjectAnimator.ofFloat(checker, "y", toY)
+
+        checker.moving = true
+        animatorX.duration = duration
+        animatorY.duration = duration
+
+        animatorX.addUpdateListener {
             invalidate()
         }
         animatorX.addListener(object : AnimatorListenerAdapter() {

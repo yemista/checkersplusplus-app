@@ -25,9 +25,11 @@ android {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "BASE_URL", "\"192.168.0.25:8080/checkersplusplus/api\"")
+            buildConfigField("String", "APP_VERSION", "\"1.0\"")
         }
         debug {
             buildConfigField("String", "BASE_URL", "\"192.168.0.25:8080/checkersplusplus/api\"")
+            buildConfigField("String", "APP_VERSION", "\"1.0\"")
         }
     }
     compileOptions {

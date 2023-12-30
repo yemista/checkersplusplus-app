@@ -1,5 +1,6 @@
 package com.checkersplusplus.app
 
+import android.app.AlertDialog
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -29,7 +30,7 @@ class OpenGamesActivity : AppCompatActivity() {
 
         val createGameButton: Button = findViewById(R.id.createGameButton)
         createGameButton.setOnClickListener {
-            createGame()
+            showMoveFirstDialog()
         }
 
         val refreshGamesButton: Button = findViewById(R.id.refreshGamesButton)
@@ -187,10 +188,13 @@ class OpenGamesActivity : AppCompatActivity() {
         })
     }
 
-    private fun createGame() {
+    private fun createGame(moveFirst: Boolean) {
         val client = OkHttpClient()
         val sessionId = StorageUtil.getData("sessionId")
+
         val json = JSONObject()
+        json.put("moveFirst", moveFirst.toString())
+
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val requestBody = json.toString().toRequestBody(mediaType)
         val request = Request.Builder()
@@ -233,5 +237,41 @@ class OpenGamesActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    private fun showMoveFirstDialog() {
+        runOnUiThread {
+            // Create an AlertDialog builder
+            val builder = AlertDialog.Builder(this)
+
+            // Set the message to show in the dialog
+            builder.setMessage("Do you want to go first?")
+
+            // Add a button to close the dialog
+            builder.setPositiveButton("Yes") { dialog, _ ->
+                dialog.dismiss()
+                createGame(true)
+            }
+
+            builder.setNegativeButton("No") { dialog, _ ->
+                // User clicked the "Close" button, so dismiss the dialog
+                dialog.dismiss()
+                createGame(false)
+            }
+
+            // Create and show the AlertDialog
+            val dialog = builder.create()
+
+//            // Set a dismiss listener on the dialog
+//            dialog.setOnDismissListener {
+//                // Close the activity when the dialog is dismissed
+//                finish()
+//            }
+
+            dialog.show()
+
+            // Optionally, prevent the dialog from being canceled when touched outside
+            dialog.setCanceledOnTouchOutside(false)
+        }
     }
 }

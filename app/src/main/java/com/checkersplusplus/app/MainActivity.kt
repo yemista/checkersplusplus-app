@@ -1,5 +1,6 @@
 package com.checkersplusplus.app
 
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -42,6 +43,8 @@ class MainActivity : AppCompatActivity() {
         createAccountButton = findViewById(R.id.createAccountButton)
         verifyAccountButton = findViewById(R.id.verifyAccountButton)
 
+        verifyVersion()
+
         // Set up the button click listeners
         loginButton.setOnClickListener {
             performLogin()
@@ -54,6 +57,76 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, VerifyActivity::class.java)
             startActivity(intent)
         }
+
+    }
+
+    private fun showResponseDialog(message: String, shouldClose: Boolean) {
+        runOnUiThread {
+            // Create an AlertDialog builder
+            val builder = AlertDialog.Builder(this)
+
+            // Set the message to show in the dialog
+            builder.setMessage(message)
+
+            // Add a button to close the dialog
+            builder.setPositiveButton("Close") { dialog, _ ->
+                // User clicked the "Close" button, so dismiss the dialog
+                dialog.dismiss()
+            }
+
+            // Create and show the AlertDialog
+            val dialog = builder.create()
+
+            // Set a dismiss listener on the dialog
+            dialog.setOnDismissListener {
+                if (shouldClose) {
+                    finish()
+                }
+            }
+
+            dialog.show()
+
+            // Optionally, prevent the dialog from being canceled when touched outside
+            dialog.setCanceledOnTouchOutside(false)
+        }
+    }
+
+    private fun verifyVersion() {
+       val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("http://" + BuildConfig.BASE_URL + "/account/version")
+            .get()
+            .build()
+
+        // Make asynchronous network call
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                // Handle failed network request
+                runOnUiThread {
+                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    showResponseDialog("Failed to get version from the server. Please try again later", true)
+                }
+
+                val responseBody = response.body?.string()
+
+                if (responseBody == null) {
+                    runOnUiThread {
+                        Toast.makeText(applicationContext, "No response from server. Try again soon", Toast.LENGTH_LONG).show()
+                    }
+                    return
+                }
+
+                if (responseBody != BuildConfig.APP_VERSION) {
+                    showResponseDialog("You are running an old version. Please update the app from the playstore.", true)
+                }
+
+            }
+        })
     }
 
     private fun performLogin() {
@@ -111,10 +184,6 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
                     }
-                }
-
-                if (!response.isSuccessful) {
-                    return
                 }
 
                 val sessionId = loginResponse["sessionId"]
