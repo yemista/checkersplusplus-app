@@ -1,5 +1,6 @@
 package com.checkersplusplus.app
 
+import android.app.AlertDialog
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -79,13 +80,7 @@ class CreateAccountActivity : AppCompatActivity() {
                         val message = createAccountResponse["message"]
 
                         if (message != null) {
-                            Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
-
-                            if (message.startsWith("Account created successfully")) {
-                                val intent =
-                                    Intent(this@CreateAccountActivity, VerifyActivity::class.java)
-                                startActivity(intent)
-                            }
+                            showResponseDialog(message)
                         }
                     }
                 } catch (e: Exception) {
@@ -126,7 +121,40 @@ class CreateAccountActivity : AppCompatActivity() {
     }
 
     private fun isValidPassword(password: String): Boolean {
-        val passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$"
+        val passwordPattern = "^(?=.*[0-9])(?=.*[a-zA-Z]).{8,}$"
         return password.matches(passwordPattern.toRegex())
+    }
+
+    private fun showResponseDialog(message: String) {
+        runOnUiThread {
+            // Create an AlertDialog builder
+            val builder = AlertDialog.Builder(this)
+
+            // Set the message to show in the dialog
+            builder.setMessage(message)
+
+            // Add a button to close the dialog
+            builder.setPositiveButton("Close") { dialog, _ ->
+                // User clicked the "Close" button, so dismiss the dialog
+                dialog.dismiss()
+            }
+
+            // Create and show the AlertDialog
+            val dialog = builder.create()
+
+            // Set a dismiss listener on the dialog
+            dialog.setOnDismissListener {
+                if (message.startsWith("Account created successfully")) {
+                    val intent =
+                        Intent(this@CreateAccountActivity, VerifyActivity::class.java)
+                    startActivity(intent)
+                }
+            }
+
+            dialog.show()
+
+            // Optionally, prevent the dialog from being canceled when touched outside
+            dialog.setCanceledOnTouchOutside(false)
+        }
     }
 }

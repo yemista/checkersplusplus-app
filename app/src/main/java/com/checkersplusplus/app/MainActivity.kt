@@ -45,10 +45,6 @@ class MainActivity : AppCompatActivity() {
         // Set up the button click listeners
         loginButton.setOnClickListener {
             performLogin()
-
-//            val intent = Intent(this@MainActivity, GameActivity::class.java)
-//            intent.putExtra("gameId", "123")
-//            startActivity(intent)
         }
         createAccountButton.setOnClickListener {
             val intent = Intent(this, CreateAccountActivity::class.java)

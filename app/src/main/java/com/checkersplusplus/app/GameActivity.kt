@@ -1,41 +1,24 @@
 package com.checkersplusplus.app
 
 import android.app.AlertDialog
-import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
-import android.os.Build
 import android.os.Bundle
-import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
-import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.GridLayout
-import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.checkersplusplus.engine.Board
 import com.checkersplusplus.engine.Coordinate
 import com.checkersplusplus.engine.CoordinatePair
-import com.checkersplusplus.engine.pieces.Checker
+import com.checkersplusplus.engine.Game
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.FormBody
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -74,9 +57,9 @@ class GameActivity : AppCompatActivity() {
         //loadRewardedAd()
     }
 
-    private fun updateCheckerBoard(board: Board, myTurn: Boolean, isBlack: Boolean) {
+    private fun updateCheckerBoard(game: Game, myTurn: Boolean, isBlack: Boolean) {
         var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
-        checkersBoard.setLogicalGame(board)
+        checkersBoard.setLogicalGame(game)
         checkersBoard.setIsMyTurn(myTurn)
         checkersBoard.setIsBlack(isBlack)
         checkersBoard.requestLayout()
@@ -98,11 +81,19 @@ class GameActivity : AppCompatActivity() {
 
             if (checkersBoard.move()) {
                sendMove()
-               checkersBoard.doMove()
-               checkersBoard.clearSelected()
+               runOnUiThread {
+                   checkersBoard.doMove()
+                   checkersBoard.invalidate()
+                   checkersBoard.requestLayout()
+               }
             } else {
-                Log.e("ILLEGAL", "ILLEGAL")
-                Log.e("BOARD", checkersBoard.board.toString())
+                runOnUiThread {
+                    Toast.makeText(
+                        applicationContext,
+                        "Illegal move.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
 
@@ -172,10 +163,11 @@ class GameActivity : AppCompatActivity() {
         val request = Request.Builder().url("ws://" + BuildConfig.BASE_URL + "/updates").build()
         val listener = object : WebSocketListener() {
             override fun onMessage(webSocket: WebSocket, message: String) {
-                Log.e("MESSAGE-WS", message)
                 if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
-                    processMoveFromServer(parts[1], parts[2])
+                    runOnUiThread {
+                        processMoveFromServer(parts[1], parts[2])
+                    }
                 } else if (message.startsWith("TIMEOUT_LOSS")) {
                     showEndGameDialog("You timed out. You lose.")
                 } else if (message.startsWith("TIMEOUT")) {
@@ -208,6 +200,10 @@ class GameActivity : AppCompatActivity() {
                         status.invalidate()
                     }
                 }
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) {
+                Log.e("WEBSOCKET_ERROR", t.toString())
             }
 
             // Implement other WebSocketListener methods as necessary
@@ -245,7 +241,6 @@ class GameActivity : AppCompatActivity() {
         val coordinatePairs = arrayListOf<CoordinatePair>()
 
         synchronized(lock) {
-            Log.e("MOVENUM", currentMove.toString() + "-" + num.toString())
             if (num == currentMove + 1) {
                 val moves = moveList.split('+')
 
@@ -271,28 +266,44 @@ class GameActivity : AppCompatActivity() {
                     val toRow = if (checkersBoard.isBlack) translateNumber(endRow) else endRow
                     val toCol = if (!checkersBoard.isBlack) translateNumber(endCol) else endCol
 
-                    Log.e("SERVER_COORD", "R:" + fromRow.toString() + "-C:" + fromCol.toString() + ",R:" + toRow.toString() + "-C:" + toCol.toString())
-
                     movesToAnimate.add(Pair(Pair(fromRow, fromCol), Pair(toRow, toCol)))
                 }
-                Log.e("SERVER_COORD", "2")
+
                 currentMove++
                 setTurn(true)
-                checkersBoard.board!!.commitMoves(coordinatePairs)
+                checkersBoard.game!!.doMove(coordinatePairs)
             }
         }
-        Log.e("SERVER_COORD", "3")
-        runOnUiThread {
-            Log.e("SERVER_COORD", "4")
-            for (move in movesToAnimate) {
-                Log.e("SERVER_COORD", "5")
-                val fromRow = move.first.first
-                val fromCol = move.first.second
-                val toRow = move.second.first
-                val toCol = move.second.second
-                checkersBoard.moveCheckerFromServer(fromRow, fromCol, toRow, toCol)
+
+        val squares = mutableListOf<CheckerSquare>()
+
+        for (idx in 0 until movesToAnimate.size) {
+            if (idx == 0) {
+                squares.add(findSquareForCoordinates(movesToAnimate[idx].first.first,
+                    movesToAnimate[idx].first.second))
+                squares.add(findSquareForCoordinates(movesToAnimate[idx].second.first,
+                    movesToAnimate[idx].second.second))
+            } else {
+                squares.add(findSquareForCoordinates(movesToAnimate[idx].second.first,
+                    movesToAnimate[idx].second.second))
             }
         }
+
+        checkersBoard.doServerMove(squares)
+    }
+
+    private fun findSquareForCoordinates(row: Int, col: Int): CheckerSquare {
+        var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+
+        for (sq in checkersBoard.checkerSquares) {
+            if (sq.row == row && sq.col == col) {
+                return sq
+            }
+        }
+
+        restartApp()
+        // never reached
+        return CheckerSquare(0f, 0f, 0, 0, 0f)
     }
 
     private fun setTurn(myTurn: Boolean) {
@@ -367,7 +378,7 @@ class GameActivity : AppCompatActivity() {
 
                 if (game["gameState"] != null) {
 
-                    val logicalBoard = Board(game["gameState"])
+                    val logicalBoard = Game(game["gameState"])
                     val accountId = StorageUtil.getData("accountId")
 
                     if (accountId == null) {
@@ -409,7 +420,6 @@ class GameActivity : AppCompatActivity() {
 
     private fun parseCurrentMove(state: String): Int {
         val parts = state.split('|')
-        Log.e("STATE2", state)
         val num = parts[1].toIntOrNull()
 
         if (num == null) {
@@ -431,28 +441,6 @@ class GameActivity : AppCompatActivity() {
             7 -> return 0
         }
         throw IllegalArgumentException()
-    }
-
-    private fun createCoordinatePairsForMove(): List<CoordinatePair> {
-        val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
-        val squares = checkersBoard.getSelectedSquares()
-        var lastSquare = squares[0]
-        val moveList = mutableListOf<CoordinatePair>()
-
-        for (square in squares) {
-            if (square == lastSquare) {
-                continue
-            }
-
-            val fromRow = if (checkersBoard.isBlack) translateNumber(lastSquare.row) else lastSquare.row
-            val fromCol = if (!checkersBoard.isBlack) translateNumber(lastSquare.col) else lastSquare.col
-            val toRow = if (checkersBoard.isBlack) translateNumber(square.row) else square.row
-            val toCol = if (!checkersBoard.isBlack) translateNumber(square.col) else square.col
-            moveList.add(CoordinatePair(Coordinate(fromCol, fromRow), Coordinate(toCol, toRow)))
-            lastSquare = square
-        }
-
-        return moveList
     }
 
     private fun createMoveListForPost(): List<Move> {
@@ -486,7 +474,6 @@ class GameActivity : AppCompatActivity() {
         val body = RequestBody.create(mediaType, jsonString)
         val sessionId = StorageUtil.getData("sessionId")
         val gameId = intent.getStringExtra("gameId")
-        Log.e("GAMEID", requestBody.toString())
         val request = Request.Builder()
             .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/move")
             .post(body)
@@ -504,7 +491,6 @@ class GameActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     currentMove++
                     val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
-                    //checkersBoard.board!!.commitMoves(moves)
                     checkersBoard.setIsMyTurn(false)
                 } else {
                     val responseBody = response.body?.string()

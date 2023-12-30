@@ -45,14 +45,6 @@
 
     <!-- Create Account Button -->
     <Button
-        android:id="@+id/trainingButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/training"
-        android:layout_marginTop="8dp"/>
-
-    <!-- Create Account Button -->
-    <Button
         android:id="@+id/createAccountButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
