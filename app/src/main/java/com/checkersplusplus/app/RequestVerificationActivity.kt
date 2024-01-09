@@ -18,12 +18,18 @@ import org.json.JSONObject
 import java.io.IOException
 
 class RequestVerificationActivity : AppCompatActivity() {
+    private var buttonPressed: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_request_verification)
 
         val sendVerificationButton: Button = findViewById(R.id.sendCodeButton)
         sendVerificationButton.setOnClickListener {
+            if (buttonPressed) {
+                return@setOnClickListener
+            }
+
             sendVerificationCode()
         }
     }
@@ -60,6 +66,7 @@ class RequestVerificationActivity : AppCompatActivity() {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
                 showMessage("Network error. Failed to connect: ${e.message}")
+                buttonPressed = false
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -107,6 +114,7 @@ class RequestVerificationActivity : AppCompatActivity() {
             dialog.setOnDismissListener {
                 val usernameEditText = findViewById<EditText>(R.id.usernameEditText)
                 val username = usernameEditText.text.toString()
+                buttonPressed = false
                 // Close the activity when the dialog is dismissed
                 finish()
                 val intent = Intent(this@RequestVerificationActivity, ResetPasswordActivity::class.java)

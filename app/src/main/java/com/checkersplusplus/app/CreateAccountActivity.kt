@@ -24,6 +24,7 @@ import java.io.IOException
 class CreateAccountActivity : AppCompatActivity() {
 
     private val client = OkHttpClient()
+    private var buttonPressed: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +37,11 @@ class CreateAccountActivity : AppCompatActivity() {
         val createAccountButton: Button = findViewById(R.id.createAccountButton)
 
         createAccountButton.setOnClickListener {
+            if (buttonPressed) {
+                return@setOnClickListener
+            }
+
+            buttonPressed = true
             val email = emailEditText.text.toString()
             val username = usernameEditText.text.toString()
             val password = passwordEditText.text.toString()
@@ -83,9 +89,12 @@ class CreateAccountActivity : AppCompatActivity() {
                             showResponseDialog(message)
                         }
                     }
+
+                    buttonPressed = false
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
                         showMessage(e.toString())
+                        buttonPressed = false
                     }
                 }
             }

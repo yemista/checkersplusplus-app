@@ -38,6 +38,7 @@ class GameActivity : AppCompatActivity() {
     private var currentMove: Int = 0
     private var gameStarted : Boolean = false
     private val lock = Any()
+    private var buttonPressed: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,6 +79,11 @@ class GameActivity : AppCompatActivity() {
         val moveButton: Button = findViewById(R.id.moveButton)
 
         moveButton.setOnClickListener {
+            if (buttonPressed) {
+                return@setOnClickListener
+            }
+
+            buttonPressed = true
             var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
 
             if (checkersBoard.shouldDoMove()) {
@@ -87,6 +93,7 @@ class GameActivity : AppCompatActivity() {
                    setTurn(false)
                    checkersBoard.invalidate()
                    checkersBoard.requestLayout()
+                   buttonPressed = false
                }
             } else {
                 runOnUiThread {
@@ -95,6 +102,7 @@ class GameActivity : AppCompatActivity() {
                         "Illegal move.",
                         Toast.LENGTH_SHORT
                     ).show()
+                    buttonPressed = false
                 }
             }
         }

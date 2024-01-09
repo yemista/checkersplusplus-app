@@ -29,6 +29,8 @@ import org.json.JSONObject
 import java.io.IOException
 
 class OpenGamesActivity : AppCompatActivity() {
+    private var buttonPressed: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_open_games)
@@ -38,6 +40,10 @@ class OpenGamesActivity : AppCompatActivity() {
 
         val createGameButton: Button = findViewById(R.id.createGameButton)
         createGameButton.setOnClickListener {
+            if (buttonPressed) {
+                return@setOnClickListener
+            }
+
             showMoveFirstDialog()
         }
 
@@ -320,10 +326,9 @@ class OpenGamesActivity : AppCompatActivity() {
             val dialog = builder.create()
 
 //            // Set a dismiss listener on the dialog
-//            dialog.setOnDismissListener {
-//                // Close the activity when the dialog is dismissed
-//                finish()
-//            }
+            dialog.setOnDismissListener {
+                buttonPressed = false
+            }
 
             dialog.show()
 

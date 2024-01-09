@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var createAccountButton: Button
     private lateinit var verifyAccountButton: Button
     private lateinit var resetPasswordButton: Button
+    private var buttonPressed: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,6 +127,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun performLogin() {
+        if (buttonPressed) {
+            return
+        }
+
         val username = usernameEditText.text.toString()
         val password = passwordEditText.text.toString()
 
@@ -151,6 +156,7 @@ class MainActivity : AppCompatActivity() {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
                 showMessage("Network error. Failed to connect: ${e.message}")
+                buttonPressed = false
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -193,6 +199,8 @@ class MainActivity : AppCompatActivity() {
                 if (accountId != null) {
                     StorageUtil.saveData("accountId", accountId)
                 }
+
+                buttonPressed = false
 
                 if (gameId != null) {
                     val intent = Intent(this@MainActivity, GameActivity::class.java)

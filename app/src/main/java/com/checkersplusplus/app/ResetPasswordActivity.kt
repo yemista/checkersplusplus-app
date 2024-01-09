@@ -25,6 +25,7 @@ class ResetPasswordActivity : AppCompatActivity() {
     private lateinit var passwordEditText: EditText
     private lateinit var confirmPasswordEditText: EditText
     private lateinit var verificationCodeEditText: EditText
+    private var buttonPressed: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,11 +42,15 @@ class ResetPasswordActivity : AppCompatActivity() {
 
         val submitButton: Button = findViewById(R.id.changePasswordButton)
         submitButton.setOnClickListener {
+            if (buttonPressed) {
+                return@setOnClickListener
+            }
+
             changePassword()
         }
     }
 
-    fun changePassword() {
+    private fun changePassword() {
         val password = passwordEditText.text.toString()
         val confirmPassword = confirmPasswordEditText.text.toString()
         val verificationCode = verificationCodeEditText.text.toString()
@@ -109,6 +114,7 @@ class ResetPasswordActivity : AppCompatActivity() {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
                 showMessage("Network error. Failed to connect: ${e.message}")
+                buttonPressed = false
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -135,6 +141,7 @@ class ResetPasswordActivity : AppCompatActivity() {
                         } else {
                             showEndGameDialog(message, false)
                         }
+                        buttonPressed = false
                     }
                 }
             }

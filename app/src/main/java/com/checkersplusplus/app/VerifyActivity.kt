@@ -17,6 +17,7 @@ class VerifyActivity : AppCompatActivity() {
 
     private lateinit var verificationCodeEditText: EditText
     private lateinit var usernameEditText: EditText
+    private var buttonPressed: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +29,10 @@ class VerifyActivity : AppCompatActivity() {
         val resendButton: Button = findViewById(R.id.resendVerificationCodeButton)
 
         sendButton.setOnClickListener {
+            if (buttonPressed) {
+                return@setOnClickListener
+            }
+
             val verificationCode = verificationCodeEditText.text.toString()
 
             if (verificationCode == null) {
@@ -58,6 +63,7 @@ class VerifyActivity : AppCompatActivity() {
                 override fun onFailure(call: Call, e: IOException) {
                     // Handle failed network request
                     showMessage("Network error. Failed to connect: ${e.message}", false)
+                    buttonPressed = false
                 }
 
                 override fun onResponse(call: Call, response: Response) {
@@ -84,6 +90,8 @@ class VerifyActivity : AppCompatActivity() {
                     if (response.isSuccessful) {
                         showMessage(message.toString(), true)
                     }
+
+                    buttonPressed = false
                 }
             })
         }
