@@ -16,6 +16,60 @@
         android:layout_height="wrap_content"
         android:text="Refresh"/>
 
+    <Button
+        android:id="@+id/filterGamesButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Filter"/>
+    <LinearLayout
+        android:id="@+id/layoutInputs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <EditText
+            android:id="@+id/editTextLowestRating"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Lowest Rating"
+            android:inputType="number"/>
+
+        <EditText
+            android:id="@+id/editTextHighestRating"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Highest Rating"
+            android:inputType="number"/>
+
+        <!-- Spinner for Sort By -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sort by"/>
+        <Spinner
+            android:id="@+id/spinnerSortBy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <!-- Spinner for Sort Direction -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sort Direction"/>
+        <Spinner
+            android:id="@+id/spinnerSortDirection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/editTextNumberOfGames"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Number of Games"
+            android:inputType="number"/>
+    </LinearLayout>
+
     <!-- Static Header Layout -->
     <LinearLayout
         android:layout_width="match_parent"

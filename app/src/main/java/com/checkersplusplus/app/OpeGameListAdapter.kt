@@ -17,6 +17,11 @@ class OpenGameListAdapter(private val list: List<OpenGameListItem>, private val 
         val joinButton: Button = view.findViewById(R.id.joinButton)
     }
 
+//    fun clearItems() {
+//        list.emp
+//        notifyDataSetChanged()
+//    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
         val itemView = LayoutInflater.from(parent.context)
             .inflate(R.layout.open_game_item_layout, parent, false)

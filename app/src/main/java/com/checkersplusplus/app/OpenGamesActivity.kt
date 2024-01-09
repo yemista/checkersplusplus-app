@@ -4,8 +4,16 @@ import android.app.AlertDialog
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.text.InputFilter
+import android.text.Spanned
 import android.util.Log
+import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -38,8 +46,48 @@ class OpenGamesActivity : AppCompatActivity() {
             fetchDataFromServer()
         }
 
+        val filterGamesButton: Button = findViewById(R.id.filterGamesButton)
+        filterGamesButton.setOnClickListener {
+            val layoutInputs = findViewById<LinearLayout>(R.id.layoutInputs)
+
+            if (layoutInputs.visibility == View.GONE) {
+                layoutInputs.visibility = View.VISIBLE
+            } else {
+                layoutInputs.visibility = View.GONE
+                fetchDataFromServer()
+            }
+        }
+
+        // Set up Spinners
+        setupSpinner(findViewById(R.id.spinnerSortBy), arrayOf("Creation date", "Opponent Rating"))
+        setupSpinner(findViewById(R.id.spinnerSortDirection), arrayOf("Ascending", "Descending"))
+
+        // Set input filters
+        findViewById<EditText>(R.id.editTextLowestRating).filters = arrayOf(InputFilterMinMax(0, 10000))
+        findViewById<EditText>(R.id.editTextHighestRating).filters = arrayOf(InputFilterMinMax(0, 10000))
         fetchDataFromServer()
     }
+
+    private fun setupSpinner(spinner: Spinner, items: Array<String>) {
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, items)
+        spinner.adapter = adapter
+    }
+
+    class InputFilterMinMax(private val min: Int, private val max: Int) : InputFilter {
+        override fun filter(source: CharSequence, start: Int, end: Int, dest: Spanned, dstart: Int, dend: Int): CharSequence? {
+            try {
+                val input = (dest.subSequence(0, dstart).toString() + source + dest.subSequence(dend, dest.length)).toInt()
+                if (isInRange(min, max, input))
+                    return null
+            } catch (nfe: NumberFormatException) { }
+            return ""
+        }
+
+        private fun isInRange(a: Int, b: Int, c: Int): Boolean {
+            return if (b > a) c in a..b else c in b..a
+        }
+    }
+
 
     override fun onResume() {
         super.onResume()
@@ -49,21 +97,15 @@ class OpenGamesActivity : AppCompatActivity() {
 
     fun parseResponse(responseData: String?): List<OpenGameListItem> {
         if (responseData == null || responseData == "") {
-            runOnUiThread {
-                Toast.makeText(
-                    applicationContext,
-                    "No response from server. Try again soon",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
+            showMessage("No response from server. Try again soon")
+            return emptyList()
         }
 
         val openGameResponse = responseData?.let { ResponseUtil.parseJsonArray(it) }
 
         if (openGameResponse == null) {
-            runOnUiThread {
-                Toast.makeText(applicationContext, "Invalid response from server. Try again soon", Toast.LENGTH_LONG).show()
-            }
+            showMessage("Invalid response from server. Try again soon")
+            return emptyList()
         }
 
         if (openGameResponse != null) {
@@ -116,22 +158,14 @@ class OpenGamesActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                showMessage("Network error. Failed to connect: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
 
                 if (responseBody == null) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "Invalid response from server. Try again soon",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    showMessage("Invalid response from server. Try again soon")
 
                     return
                 }
@@ -143,9 +177,7 @@ class OpenGamesActivity : AppCompatActivity() {
                     intent.putExtra("gameId", gameId)
                     startActivity(intent)
                 } else {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, game["message"], Toast.LENGTH_LONG).show()
-                    }
+                    showMessage(game["message"].toString())
                 }
             }
         })
@@ -165,15 +197,50 @@ class OpenGamesActivity : AppCompatActivity() {
 
     private fun fetchDataFromServer() {
         val client = OkHttpClient()
+        var openGamesUrl = "http://" + BuildConfig.BASE_URL + "/game/open?"
+        val spinnerSortBy: Spinner = findViewById(R.id.spinnerSortBy)
+
+        openGamesUrl += if (spinnerSortBy.selectedItem == "Opponent Rating") {
+            "sortBy=creatorRating&"
+        } else {
+            "sortBy=created&"
+        }
+
+        val spinnerSortDirection: Spinner = findViewById(R.id.spinnerSortDirection)
+
+        openGamesUrl += if (spinnerSortDirection.selectedItem == "Descending") {
+            "sortDirection=desc&"
+        } else {
+            "sortDirection=asc&"
+        }
+
+        val editTextLowestRating: EditText = findViewById(R.id.editTextLowestRating)
+
+        if (editTextLowestRating.text != null && editTextLowestRating.text.length > 0) {
+            openGamesUrl += "ratingLow=" + editTextLowestRating.text + "&"
+        }
+
+        val editTextHighestRating: EditText = findViewById(R.id.editTextHighestRating)
+
+        if (editTextHighestRating.text != null && editTextHighestRating.text.length > 0) {
+            openGamesUrl += "ratingHigh=" + editTextHighestRating.text + "&"
+        }
+
+        val editTextNumberOfGames: EditText = findViewById(R.id.editTextNumberOfGames)
+
+        if (editTextNumberOfGames.text != null && editTextNumberOfGames.text.length > 0) {
+            openGamesUrl += "pageSize=" + editTextNumberOfGames.text + "&"
+        }
+
+        Log.e("URL", openGamesUrl)
+
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/game/open")
+            .url(openGamesUrl)
             .build()
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                showMessage("Network error. Failed to connect: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -204,22 +271,14 @@ class OpenGamesActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                showMessage("Network error. Failed to connect: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
 
                 if (responseBody == null) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "Invalid response from server. Try again soon",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    showMessage("Invalid response from server. Try again soon")
 
                     return
                 }
@@ -231,9 +290,7 @@ class OpenGamesActivity : AppCompatActivity() {
                     intent.putExtra("gameId", game["gameId"])
                     startActivity(intent)
                 } else {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, game["message"], Toast.LENGTH_LONG).show()
-                    }
+                    showMessage(game["message"].toString())
                 }
             }
         })
@@ -267,6 +324,35 @@ class OpenGamesActivity : AppCompatActivity() {
 //                // Close the activity when the dialog is dismissed
 //                finish()
 //            }
+
+            dialog.show()
+
+            // Optionally, prevent the dialog from being canceled when touched outside
+            dialog.setCanceledOnTouchOutside(false)
+        }
+    }
+
+    private fun showMessage(message: String) {
+        runOnUiThread {
+            // Create an AlertDialog builder
+            val builder = AlertDialog.Builder(this)
+
+            // Set the message to show in the dialog
+            builder.setMessage(message)
+
+            // Add a button to close the dialog
+            builder.setPositiveButton("Close") { dialog, _ ->
+                // User clicked the "Close" button, so dismiss the dialog
+                dialog.dismiss()
+            }
+
+            // Create and show the AlertDialog
+            val dialog = builder.create()
+
+            // Set a dismiss listener on the dialog
+            dialog.setOnDismissListener {
+
+            }
 
             dialog.show()
 

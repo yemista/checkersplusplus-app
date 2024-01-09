@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loginButton: Button
     private lateinit var createAccountButton: Button
     private lateinit var verifyAccountButton: Button
+    private lateinit var resetPasswordButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         loginButton = findViewById(R.id.loginButton)
         createAccountButton = findViewById(R.id.createAccountButton)
         verifyAccountButton = findViewById(R.id.verifyAccountButton)
+        resetPasswordButton = findViewById(R.id.resetPasswordButton)
 
         verifyVersion()
 
@@ -57,7 +59,10 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, VerifyActivity::class.java)
             startActivity(intent)
         }
-
+        resetPasswordButton.setOnClickListener {
+            val intent = Intent(this, RequestVerificationActivity::class.java)
+            startActivity(intent)
+        }
     }
 
     private fun showResponseDialog(message: String, shouldClose: Boolean) {
@@ -102,9 +107,7 @@ class MainActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
-                runOnUiThread {
-                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                showResponseDialog("Network error. Failed to connect: ${e.message}", true)
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -113,13 +116,6 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val responseBody = response.body?.string()
-
-                if (responseBody == null) {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, "No response from server. Try again soon", Toast.LENGTH_LONG).show()
-                    }
-                    return
-                }
 
                 if (responseBody != BuildConfig.APP_VERSION) {
                     showResponseDialog("You are running an old version. Please update the app from the playstore.", true)
@@ -134,7 +130,7 @@ class MainActivity : AppCompatActivity() {
         val password = passwordEditText.text.toString()
 
         if (username.isBlank() || password.isBlank()) {
-            Toast.makeText(this, "Username or password cannot be empty", Toast.LENGTH_LONG).show()
+            showMessage("Username or password cannot be empty")
             return
         }
 
@@ -154,27 +150,21 @@ class MainActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
-                runOnUiThread {
-                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                showMessage("Network error. Failed to connect: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
 
                 if (responseBody == null) {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, "No response from server. Try again soon", Toast.LENGTH_LONG).show()
-                    }
+                    showMessage("No response from server. Try again soon")
                     return
                 }
 
                 val loginResponse = ResponseUtil.parseJson(responseBody)
 
                 if (loginResponse == null) {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, "Invalid response from server. Try again soon", Toast.LENGTH_LONG).show()
-                    }
+                    showMessage("Invalid response from server. Try again soon")
                     return
                 }
 
@@ -192,9 +182,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Should never happen
                 if (accountId == null || sessionId == null) {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, "Server response missing data. Try again soon", Toast.LENGTH_LONG).show()
-                    }
+                    showMessage("Server response missing data. Try again soon")
                     return
                 }
 
@@ -217,6 +205,35 @@ class MainActivity : AppCompatActivity() {
 
             }
         })
+    }
+
+    private fun showMessage(message: String) {
+        runOnUiThread {
+            // Create an AlertDialog builder
+            val builder = AlertDialog.Builder(this)
+
+            // Set the message to show in the dialog
+            builder.setMessage(message)
+
+            // Add a button to close the dialog
+            builder.setPositiveButton("Close") { dialog, _ ->
+                // User clicked the "Close" button, so dismiss the dialog
+                dialog.dismiss()
+            }
+
+            // Create and show the AlertDialog
+            val dialog = builder.create()
+
+            // Set a dismiss listener on the dialog
+            dialog.setOnDismissListener {
+
+            }
+
+            dialog.show()
+
+            // Optionally, prevent the dialog from being canceled when touched outside
+            dialog.setCanceledOnTouchOutside(false)
+        }
     }
 
 }

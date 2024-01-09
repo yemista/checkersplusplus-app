@@ -1,5 +1,6 @@
 package com.checkersplusplus.app
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
@@ -56,50 +57,32 @@ class VerifyActivity : AppCompatActivity() {
             client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     // Handle failed network request
-                    runOnUiThread {
-                        Toast.makeText(applicationContext,
-                            "Network error. Failed to connect: ${e.message}",
-                            Toast.LENGTH_LONG)
-                            .show()
-                    }
+                    showMessage("Network error. Failed to connect: ${e.message}", false)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
                     val responseBody = response.body?.string() ?: ""
 
                     if (responseBody == null) {
-                        runOnUiThread {
-                            Toast.makeText(
-                                applicationContext,
-                                "No response from server. Try again soon",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+                        showMessage("No response from server. Try again soon", false)
+                        return
                     }
 
                     val createAccountResponse = ResponseUtil.parseJson(responseBody)
 
                     if (createAccountResponse == null) {
-                        runOnUiThread {
-                            Toast.makeText(
-                                applicationContext,
-                                "Invalid response from server. Try again soon",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+                        showMessage("Invalid response from server. Try again soon", false)
+                        return
                     }
 
                     val message = createAccountResponse["message"]
 
                     if (message != null) {
-                        runOnUiThread {
-                            Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
-                        }
+                        showMessage(message.toString(), false)
                     }
 
                     if (response.isSuccessful) {
-                        val intent = Intent(this@VerifyActivity, MainActivity::class.java)
-                        startActivity(intent)
+                        showMessage(message.toString(), true)
                     }
                 }
             })
@@ -120,52 +103,73 @@ class VerifyActivity : AppCompatActivity() {
             val mediaType = "application/json; charset=utf-8".toMediaType()
             val requestBody = json.toString().toRequestBody(mediaType)
             val request = Request.Builder()
-                .url(BuildConfig.BASE_URL + "/account/sendVerification")
+                .url("http://" + BuildConfig.BASE_URL + "/account/sendVerification")
                 .post(requestBody)
                 .build()
 
             client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    // Handle failed network request
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
-                    }
+                    showMessage("Network error. Failed to connect: ${e.message}", false)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
                     val responseBody = response.body?.string() ?: ""
 
                     if (responseBody == null) {
-                        runOnUiThread {
-                            Toast.makeText(
-                                applicationContext,
-                                "No response from server. Try again soon",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+                        showMessage("No response from server. Try again soon", false)
+                        return
                     }
 
                     val createAccountResponse = ResponseUtil.parseJson(responseBody)
 
                     if (createAccountResponse == null) {
-                        runOnUiThread {
-                            Toast.makeText(
-                                applicationContext,
-                                "Invalid response from server. Try again soon",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+                        showMessage("Invalid response from server. Try again soon", false)
+                        return
                     }
 
                     val message = createAccountResponse["message"]
 
                     if (message != null) {
-                        runOnUiThread {
-                            Toast.makeText(applicationContext, message, Toast.LENGTH_LONG).show()
+                        if (response.isSuccessful) {
+                            showMessage(message.toString(), false)
+                        } else {
+                            showMessage(message.toString(), false)
                         }
                     }
                 }
             })
+        }
+    }
+
+    private fun showMessage(message: String, complete: Boolean) {
+        runOnUiThread {
+            // Create an AlertDialog builder
+            val builder = AlertDialog.Builder(this)
+
+            // Set the message to show in the dialog
+            builder.setMessage(message)
+
+            // Add a button to close the dialog
+            builder.setPositiveButton("Close") { dialog, _ ->
+                // User clicked the "Close" button, so dismiss the dialog
+                dialog.dismiss()
+            }
+
+            // Create and show the AlertDialog
+            val dialog = builder.create()
+
+            // Set a dismiss listener on the dialog
+            dialog.setOnDismissListener {
+                if (complete) {
+                    val intent = Intent(this@VerifyActivity, MainActivity::class.java)
+                    startActivity(intent)
+                }
+            }
+
+            dialog.show()
+
+            // Optionally, prevent the dialog from being canceled when touched outside
+            dialog.setCanceledOnTouchOutside(false)
         }
     }
 }

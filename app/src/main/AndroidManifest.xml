@@ -16,6 +16,12 @@
         android:theme="@style/Theme.Checkers"
         tools:targetApi="31">
         <activity
+            android:name=".RequestVerificationActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ResetPasswordActivity"
+            android:exported="false" />
+        <activity
             android:name=".GameActivity"
             android:exported="false" />
         <activity

@@ -84,6 +84,7 @@ class GameActivity : AppCompatActivity() {
                sendMove()
                runOnUiThread {
                    checkersBoard.doMove()
+                   setTurn(false)
                    checkersBoard.invalidate()
                    checkersBoard.requestLayout()
                }
@@ -127,23 +128,14 @@ class GameActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                showMessage("Network error. Failed to connect: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
 
                 if (responseBody == null) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "Invalid response from server. Try again soon",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-
+                    showMessage("Invalid response from server. Try again soon")
                     return
                 }
 
@@ -152,9 +144,7 @@ class GameActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     showEndGameDialog("You resigned")
                 } else {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, game["message"], Toast.LENGTH_LONG).show()
-                    }
+                    showMessage(game["message"].toString())
                 }
             }
         })
@@ -164,6 +154,8 @@ class GameActivity : AppCompatActivity() {
         val request = Request.Builder().url("ws://" + BuildConfig.BASE_URL + "/updates").build()
         val listener = object : WebSocketListener() {
             override fun onMessage(webSocket: WebSocket, message: String) {
+                Log.e("WS", message)
+
                 if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
                     runOnUiThread {
@@ -192,6 +184,9 @@ class GameActivity : AppCompatActivity() {
                         val resignButton: Button = findViewById(R.id.resignButton)
                         resignButton.visibility = View.VISIBLE
                         resignButton.invalidate()
+
+                        var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+                        checkersBoard.gameStarted = true
 
                         val status: TextView = findViewById(R.id.statusTextView)
                         if (playersTurn) {
@@ -273,7 +268,6 @@ class GameActivity : AppCompatActivity() {
                 }
 
                 currentMove++
-                setTurn(true)
                 checkersBoard.game!!.doMove(coordinatePairs)
             }
         }
@@ -292,7 +286,9 @@ class GameActivity : AppCompatActivity() {
             }
         }
 
-        checkersBoard.doServerMove(squares)
+        checkersBoard.doServerMove(squares) {
+            setTurn(true)
+        }
     }
 
     private fun findSquareForCoordinates(row: Int, col: Int): CheckerSquare {
@@ -333,12 +329,7 @@ class GameActivity : AppCompatActivity() {
             .build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(applicationContext,
-                        "Network error. Failed to connect: ${e.message}",
-                        Toast.LENGTH_LONG)
-                        .show()
-                }
+                showMessage("Network error. Failed to connect: ${e.message}")
                 finish()
             }
 
@@ -346,23 +337,11 @@ class GameActivity : AppCompatActivity() {
                 val responseBody = response.body?.string() ?: ""
 
                 if (responseBody == null) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "No response from server. Try again soon",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    showMessage("No response from server. Try again soon")
                 }
 
                 if (response.code == 404 /*NOT_FOUND*/) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "The game you were looking for no longer exists",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    showMessage("The game you were looking for no longer exists")
 
                     finish()
                 }
@@ -370,13 +349,7 @@ class GameActivity : AppCompatActivity() {
                 val game = ResponseUtil.parseJson(responseBody)
 
                 if (game == null) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "Invalid response from server. Try again soon",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    showMessage("Invalid response from server. Try again soon")
                 }
 
                 if (game["gameState"] != null) {
@@ -413,6 +386,9 @@ class GameActivity : AppCompatActivity() {
                             } else {
                                 status.text = "Opponents turn"
                             }
+
+                            val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+                            checkersBoard.gameStarted = true
                         }
 
                         updateCheckerBoard(logicalBoard, playersTurn, isBlack)
@@ -485,10 +461,7 @@ class GameActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
-                    finish()
-                }
+                showMessage("Network error. Failed to connect: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -500,22 +473,13 @@ class GameActivity : AppCompatActivity() {
                     val responseBody = response.body?.string()
 
                     if (responseBody == null) {
-                        runOnUiThread {
-                            Toast.makeText(
-                                applicationContext,
-                                "Invalid response from server. Try again soon",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-
+                        showMessage("Invalid response from server. Try again soon")
                         return
                     }
 
                     val game = ResponseUtil.parseJson(responseBody)
 
-                    runOnUiThread {
-                        Toast.makeText(this@GameActivity, game["message"].toString(), Toast.LENGTH_SHORT).show()
-                    }
+                    showMessage(game["message"].toString())
                 }
             }
         })
@@ -589,7 +553,7 @@ class GameActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 runOnUiThread {
-                    Toast.makeText(applicationContext, "Network error. Failed to connect: ${e.message}", Toast.LENGTH_LONG).show()
+                    showMessage("Network error. Failed to connect: ${e.message}")
                 }
             }
 
@@ -598,11 +562,7 @@ class GameActivity : AppCompatActivity() {
 
                 if (responseBody == null) {
                     runOnUiThread {
-                        Toast.makeText(
-                            applicationContext,
-                            "Invalid response from server. Try again soon",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        showMessage("Invalid response from server. Try again soon")
                     }
 
                     return
@@ -615,11 +575,38 @@ class GameActivity : AppCompatActivity() {
                     startActivity(intent)
                     finish()
                 } else {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, game["message"], Toast.LENGTH_LONG).show()
-                    }
+                    showMessage(game["message"].toString())
                 }
             }
         })
+    }
+
+    private fun showMessage(message: String) {
+        runOnUiThread {
+            // Create an AlertDialog builder
+            val builder = AlertDialog.Builder(this)
+
+            // Set the message to show in the dialog
+            builder.setMessage(message)
+
+            // Add a button to close the dialog
+            builder.setPositiveButton("Close") { dialog, _ ->
+                // User clicked the "Close" button, so dismiss the dialog
+                dialog.dismiss()
+            }
+
+            // Create and show the AlertDialog
+            val dialog = builder.create()
+
+            // Set a dismiss listener on the dialog
+            dialog.setOnDismissListener {
+
+            }
+
+            dialog.show()
+
+            // Optionally, prevent the dialog from being canceled when touched outside
+            dialog.setCanceledOnTouchOutside(false)
+        }
     }
 }

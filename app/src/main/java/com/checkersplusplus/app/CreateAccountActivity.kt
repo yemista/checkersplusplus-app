@@ -68,13 +68,13 @@ class CreateAccountActivity : AppCompatActivity() {
 
                     withContext(Dispatchers.Main) {
                         if (responseBody == null || responseBody == "") {
-                            Toast.makeText(applicationContext, "No response from server. Try again soon", Toast.LENGTH_LONG).show()
+                            showMessage("No response from server. Try again soon")
                         }
 
                         val createAccountResponse = ResponseUtil.parseJson(responseBody)
 
                         if (createAccountResponse == null) {
-                            Toast.makeText(applicationContext, "Invalid response from server. Try again soon", Toast.LENGTH_LONG).show()
+                            showMessage("Invalid response from server. Try again soon")
                         }
 
                         val message = createAccountResponse["message"]
@@ -85,7 +85,7 @@ class CreateAccountActivity : AppCompatActivity() {
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(applicationContext, e.toString(), Toast.LENGTH_LONG).show()
+                        showMessage(e.toString())
                     }
                 }
             }
@@ -149,6 +149,35 @@ class CreateAccountActivity : AppCompatActivity() {
                         Intent(this@CreateAccountActivity, VerifyActivity::class.java)
                     startActivity(intent)
                 }
+            }
+
+            dialog.show()
+
+            // Optionally, prevent the dialog from being canceled when touched outside
+            dialog.setCanceledOnTouchOutside(false)
+        }
+    }
+
+    private fun showMessage(message: String) {
+        runOnUiThread {
+            // Create an AlertDialog builder
+            val builder = AlertDialog.Builder(this)
+
+            // Set the message to show in the dialog
+            builder.setMessage(message)
+
+            // Add a button to close the dialog
+            builder.setPositiveButton("Close") { dialog, _ ->
+                // User clicked the "Close" button, so dismiss the dialog
+                dialog.dismiss()
+            }
+
+            // Create and show the AlertDialog
+            val dialog = builder.create()
+
+            // Set a dismiss listener on the dialog
+            dialog.setOnDismissListener {
+
             }
 
             dialog.show()
