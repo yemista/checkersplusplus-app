@@ -6,15 +6,21 @@
     android:layout_height="match_parent">
 
     <!-- Logo at the top -->
-    <ImageView
-        android:id="@+id/logoImageView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+<!--    <ImageView-->
+<!--        android:id="@+id/logoImageView"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
 
-        android:contentDescription="@string/logo"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="32dp"
-        android:layout_marginBottom="32dp" />
+<!--        android:contentDescription="@string/logo"-->
+<!--        android:layout_gravity="center_horizontal"-->
+<!--        android:layout_marginTop="32dp"-->
+<!--        android:layout_marginBottom="32dp" />-->
+    <ImageView
+        android:id="@+id/imageViewLogo"
+        android:layout_width="wrap_content"
+        android:layout_height="150dp"
+
+        android:src="@drawable/logo2" />
 
     <!-- Username input field -->
     <EditText
@@ -42,6 +48,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/login"
+        android:layout_marginTop="16dp"/>
+
+    <Button
+        android:id="@+id/leaderboard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/leaderboard"
         android:layout_marginTop="16dp"/>
 
     <!-- Create Account Button -->

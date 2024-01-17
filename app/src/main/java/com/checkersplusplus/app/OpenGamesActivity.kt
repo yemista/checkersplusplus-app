@@ -158,7 +158,7 @@ class OpenGamesActivity : AppCompatActivity() {
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val requestBody = json.toString().toRequestBody(mediaType)
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/join")
+            .url("https://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/join")
             .post(requestBody)
             .build()
 
@@ -203,7 +203,7 @@ class OpenGamesActivity : AppCompatActivity() {
 
     private fun fetchDataFromServer() {
         val client = OkHttpClient()
-        var openGamesUrl = "http://" + BuildConfig.BASE_URL + "/game/open?"
+        var openGamesUrl = "https://" + BuildConfig.BASE_URL + "/game/open?"
         val spinnerSortBy: Spinner = findViewById(R.id.spinnerSortBy)
 
         openGamesUrl += if (spinnerSortBy.selectedItem == "Opponent Rating") {
@@ -271,7 +271,7 @@ class OpenGamesActivity : AppCompatActivity() {
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val requestBody = json.toString().toRequestBody(mediaType)
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId +"/create")
+            .url("https://" + BuildConfig.BASE_URL + "/game/" + sessionId +"/create")
             .post(requestBody)
             .build()
 

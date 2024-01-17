@@ -130,7 +130,7 @@ class GameActivity : AppCompatActivity() {
         val requestBody = json.toString().toRequestBody(mediaType)
         val gameId = intent.getStringExtra("gameId")
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/forfeit")
+            .url("https://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/forfeit")
             .post(requestBody)
             .build()
 
@@ -159,7 +159,7 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun startWebSocket() {
-        val request = Request.Builder().url("ws://" + BuildConfig.BASE_URL + "/updates").build()
+        val request = Request.Builder().url("wss://" + BuildConfig.BASE_URL + "/updates").build()
         val listener = object : WebSocketListener() {
             override fun onMessage(webSocket: WebSocket, message: String) {
                 Log.e("WS", message)
@@ -333,7 +333,7 @@ class GameActivity : AppCompatActivity() {
     private fun lookupGame(gameId: String) {
         val client = OkHttpClient()
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/game/" + gameId)
+            .url("https://" + BuildConfig.BASE_URL + "/game/" + gameId)
             .build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -463,7 +463,7 @@ class GameActivity : AppCompatActivity() {
         val sessionId = StorageUtil.getData("sessionId")
         val gameId = intent.getStringExtra("gameId")
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/move")
+            .url("https://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/move")
             .post(body)
             .build()
 
@@ -554,7 +554,7 @@ class GameActivity : AppCompatActivity() {
         val requestBody = json.toString().toRequestBody(mediaType)
         val gameId = intent.getStringExtra("gameId")
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/cancel")
+            .url("https://" + BuildConfig.BASE_URL + "/game/" + sessionId + "/" + gameId + "/cancel")
             .post(requestBody)
             .build()
 

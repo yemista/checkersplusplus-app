@@ -2,13 +2,11 @@ package com.checkersplusplus.app
 
 import android.app.AlertDialog
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.util.Patterns
 import android.widget.Button
 import android.widget.EditText
-import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,9 +15,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
 import org.json.JSONObject
-import java.io.IOException
 
 class CreateAccountActivity : AppCompatActivity() {
 
@@ -112,7 +108,7 @@ class CreateAccountActivity : AppCompatActivity() {
         val requestBody = json.toString().toRequestBody(mediaType)
 
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/account/create")
+            .url("https://" + BuildConfig.BASE_URL + "/account/create")
             .post(requestBody)
             .build()
 

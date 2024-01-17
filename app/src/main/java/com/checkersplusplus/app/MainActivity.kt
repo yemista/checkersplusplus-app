@@ -1,23 +1,17 @@
 package com.checkersplusplus.app
 
 import android.app.AlertDialog
-import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
-import android.util.Log
-import android.view.Gravity
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
@@ -46,8 +40,6 @@ class MainActivity : AppCompatActivity() {
         verifyAccountButton = findViewById(R.id.verifyAccountButton)
         resetPasswordButton = findViewById(R.id.resetPasswordButton)
 
-        verifyVersion()
-
         // Set up the button click listeners
         loginButton.setOnClickListener {
             performLogin()
@@ -63,6 +55,23 @@ class MainActivity : AppCompatActivity() {
         resetPasswordButton.setOnClickListener {
             val intent = Intent(this, RequestVerificationActivity::class.java)
             startActivity(intent)
+        }
+        val leaderboardButton: Button = findViewById(R.id.leaderboard)
+        leaderboardButton.setOnClickListener {
+            try {
+                val url = "https://leaderboard.checkersplusplus.com"
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.data = Uri.parse(url)
+                startActivity(intent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Handle the error or show a message to the user
+            }
+
+        }
+
+        runOnUiThread {
+            verifyVersion()
         }
     }
 
@@ -100,7 +109,7 @@ class MainActivity : AppCompatActivity() {
     private fun verifyVersion() {
        val client = OkHttpClient()
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/account/version")
+            .url("https://" + BuildConfig.BASE_URL + "/account/version")
             .get()
             .build()
 
@@ -147,7 +156,7 @@ class MainActivity : AppCompatActivity() {
         val client = OkHttpClient()
         val requestBody = jsonBody.toRequestBody(jsonMediaType)
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/account/login")
+            .url("https://" + BuildConfig.BASE_URL + "/account/login")
             .post(requestBody)
             .build()
 
@@ -177,8 +186,10 @@ class MainActivity : AppCompatActivity() {
                 val message = loginResponse["message"]
 
                 if (message != null) {
-                    runOnUiThread {
-                        Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+                    showMessage(message)
+
+                    if (response.isSuccessful == false) {
+                        return
                     }
                 }
 

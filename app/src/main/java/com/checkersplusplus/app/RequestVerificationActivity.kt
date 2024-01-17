@@ -58,7 +58,7 @@ class RequestVerificationActivity : AppCompatActivity() {
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val requestBody = json.toString().toRequestBody(mediaType)
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/account/sendVerification")
+            .url("https://" + BuildConfig.BASE_URL + "/account/sendVerification")
             .post(requestBody)
             .build()
 

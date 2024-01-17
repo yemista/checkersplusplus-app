@@ -106,7 +106,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val requestBody = json.toString().toRequestBody(mediaType)
         val request = Request.Builder()
-            .url("http://" + BuildConfig.BASE_URL + "/account/resetPassword")
+            .url("https://" + BuildConfig.BASE_URL + "/account/resetPassword")
             .post(requestBody)
             .build()
 
