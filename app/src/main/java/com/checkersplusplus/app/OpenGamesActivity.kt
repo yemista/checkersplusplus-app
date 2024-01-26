@@ -27,6 +27,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class OpenGamesActivity : AppCompatActivity() {
     private var buttonPressed: Boolean = false
@@ -152,7 +153,11 @@ class OpenGamesActivity : AppCompatActivity() {
     }
 
     private fun joinGame(gameId: String) {
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
         val sessionId = StorageUtil.getData("sessionId")
         val json = JSONObject()
         val mediaType = "application/json; charset=utf-8".toMediaType()
@@ -202,7 +207,11 @@ class OpenGamesActivity : AppCompatActivity() {
     }
 
     private fun fetchDataFromServer() {
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
         var openGamesUrl = "https://" + BuildConfig.BASE_URL + "/game/open?"
         val spinnerSortBy: Spinner = findViewById(R.id.spinnerSortBy)
 
@@ -238,7 +247,7 @@ class OpenGamesActivity : AppCompatActivity() {
             openGamesUrl += "pageSize=" + editTextNumberOfGames.text + "&"
         }
 
-        Log.e("URL", openGamesUrl)
+        //Log.e("URL", openGamesUrl)
 
         val request = Request.Builder()
             .url(openGamesUrl)
@@ -246,7 +255,7 @@ class OpenGamesActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                showMessage("Network error. Failed to connect: ${e.message}")
+                //showMessage("Network error. Failed to connect: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -262,7 +271,11 @@ class OpenGamesActivity : AppCompatActivity() {
     }
 
     private fun createGame(moveFirst: Boolean) {
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(15L, TimeUnit.SECONDS)
+            .readTimeout(15L, TimeUnit.SECONDS)
+            .writeTimeout(15L, TimeUnit.SECONDS)
+            .build()
         val sessionId = StorageUtil.getData("sessionId")
 
         val json = JSONObject()
@@ -277,7 +290,7 @@ class OpenGamesActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                showMessage("Network error. Failed to connect: ${e.message}")
+                showMessage("Bad network connection. Please try again.")
             }
 
             override fun onResponse(call: Call, response: Response) {

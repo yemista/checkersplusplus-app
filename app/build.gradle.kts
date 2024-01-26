@@ -27,11 +27,13 @@ android {
             //buildConfigField("String", "BASE_URL", "\"192.168.0.25:8080/checkersplusplus/api\"")
             buildConfigField("String", "BASE_URL", "\"server.checkersplusplus.com/checkersplusplus/api\"")
             buildConfigField("String", "APP_VERSION", "\"1.0\"")
+            buildConfigField("Long", "NETWORK_TIMEOUT", "20")
         }
         debug {
             //buildConfigField("String", "BASE_URL", "\"192.168.0.25:8080/checkersplusplus/api\"")
             buildConfigField("String", "BASE_URL", "\"server.checkersplusplus.com/checkersplusplus/api\"")
             buildConfigField("String", "APP_VERSION", "\"1.0\"")
+            buildConfigField("Long", "NETWORK_TIMEOUT", "20L")
         }
     }
     compileOptions {

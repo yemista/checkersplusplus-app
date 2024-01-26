@@ -16,10 +16,16 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 class CreateAccountActivity : AppCompatActivity() {
 
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+        .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+        .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+        .build()
+
     private var buttonPressed: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {

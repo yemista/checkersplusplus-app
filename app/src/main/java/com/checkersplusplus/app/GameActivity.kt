@@ -14,8 +14,12 @@ import com.checkersplusplus.engine.Coordinate
 import com.checkersplusplus.engine.CoordinatePair
 import com.checkersplusplus.engine.Game
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
@@ -30,6 +34,11 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+
 
 class GameActivity : AppCompatActivity() {
     private lateinit var webSocketClient: OkHttpClient
@@ -39,22 +48,42 @@ class GameActivity : AppCompatActivity() {
     private var gameStarted : Boolean = false
     private val lock = Any()
     private var buttonPressed: Boolean = false
+    private var isBlack: Boolean = false
+    private lateinit var logicalBoard: Game
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_game)
         setupActionListeners()
 
+        webSocketClient = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
+
         val gameId = intent.getStringExtra("gameId")
 
         if (gameId == null) {
             restartApp()
         } else {
-            lookupGame(gameId)
+            val networkScope = CoroutineScope(Dispatchers.IO)
+            networkScope.launch {
+                try {
+                    val deferred = async { lookupGame(gameId) }
+                    deferred.await()
+                    val deferredServerIp = async { lookupWebSocketServer() }
+                    deferredServerIp.await()
+                    startWebSocket(deferredServerIp.getCompleted())//"server1.servers.checkersplusplus.com")
+                } catch (e: CancellationException) {
+                    // Ignore cancellation
+                } catch (e: Exception) {
+                    Log.e("LOGIN_EXCEPTION", e.toString())
+                    finish()
+                }
+            }
         }
 
-        webSocketClient = OkHttpClient()
-        startWebSocket()
         //MobileAds.initialize(this) {}
         //loadRewardedAd()
     }
@@ -123,7 +152,11 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun forfeitGame() {
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
         val sessionId = StorageUtil.getData("sessionId")
         val json = JSONObject()
         val mediaType = "application/json; charset=utf-8".toMediaType()
@@ -158,11 +191,31 @@ class GameActivity : AppCompatActivity() {
         })
     }
 
-    private fun startWebSocket() {
-        val request = Request.Builder().url("wss://" + BuildConfig.BASE_URL + "/updates").build()
+    private fun startWebSocket(serverIp: String) {
+        Log.e("SERVER", serverIp)
+
+        val request = Request.Builder().url("wss://" + serverIp + ":8080/checkersplusplus/api/updates").build()
         val listener = object : WebSocketListener() {
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                webSocket.close(1000, null)
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                if (gameStarted) {
+                    //startWebSocket(serverIp)
+                }
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                Log.e("WEBSOCKET_ERROR", t.toString())
+
+                if (gameStarted) {
+                    //startWebSocket(serverIp)
+                }
+            }
+
             override fun onMessage(webSocket: WebSocket, message: String) {
-                Log.e("WS", message)
+                Log.e("MESSAGE", message)
 
                 if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
@@ -182,6 +235,10 @@ class GameActivity : AppCompatActivity() {
                 } else if (message.startsWith("DRAW")) {
                     showEndGameDialog("Draw.")
                 } else if (message.startsWith("BEGIN")) {
+                    if (gameStarted) {
+                        return;
+                    }
+
                     gameStarted = true
 
                     runOnUiThread {
@@ -208,10 +265,6 @@ class GameActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) {
-                Log.e("WEBSOCKET_ERROR", t.toString())
-            }
-
             // Implement other WebSocketListener methods as necessary
         }
 
@@ -219,12 +272,16 @@ class GameActivity : AppCompatActivity() {
         val sessionId = StorageUtil.getData("sessionId")
         webSocket.send(sessionId)
 
+        runOnUiThread {
+            updateCheckerBoard(logicalBoard, playersTurn, isBlack)
+        }
+
         lifecycleScope.launch(Dispatchers.IO) { // Starts a coroutine in the background thread
             // Code to run in background
             // For example, a network call or database operation
             val sessionId = StorageUtil.getData("sessionId")
             webSocket.send(sessionId)
-            Thread.sleep(1000 * 60)
+            Thread.sleep(1000 * 45)
 
             withContext(Dispatchers.Main) {
                 // Code to run on the main thread, like updating the UI
@@ -330,80 +387,117 @@ class GameActivity : AppCompatActivity() {
         return pieces[1].toIntOrNull()!!
     }
 
-    private fun lookupGame(gameId: String) {
-        val client = OkHttpClient()
+    private suspend fun lookupGame(gameId: String): String {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
         val request = Request.Builder()
             .url("https://" + BuildConfig.BASE_URL + "/game/" + gameId)
             .build()
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                showMessage("Network error. Failed to connect: ${e.message}")
-                finish()
-            }
 
-            override fun onResponse(call: Call, response: Response) {
-                val responseBody = response.body?.string() ?: ""
-
-                if (responseBody == null) {
-                    showMessage("No response from server. Try again soon")
-                }
-
-                if (response.code == 404 /*NOT_FOUND*/) {
-                    showMessage("The game you were looking for no longer exists")
-
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    showMessage("Network error. Failed to connect: ${e.message}")
+                    continuation.resumeWithException(e)
                     finish()
                 }
 
-                val game = ResponseUtil.parseJson(responseBody)
+                override fun onResponse(call: Call, response: Response) {
+                    val responseBody = response.body?.string() ?: ""
 
-                if (game == null) {
-                    showMessage("Invalid response from server. Try again soon")
-                }
-
-                if (game["gameState"] != null) {
-
-                    val logicalBoard = Game(game["gameState"])
-                    val accountId = StorageUtil.getData("accountId")
-
-                    if (accountId == null) {
-                        restartApp()
+                    if (responseBody == null) {
+                        showMessage("No response from server. Try again soon")
                     }
 
-                    currentMove = parseCurrentMove(game["gameState"]!!)
-                    playersTurn = accountId == game["currentTurnId"]
-                    val isBlack = accountId == game["blackAccountId"]
-                    val notStarted = game["blackAccountId"] == null || game["redAccountId"] == null
+                    if (response.code == 404 /*NOT_FOUND*/) {
+                        showMessage("The game you were looking for no longer exists")
 
-                    runOnUiThread {
-                        val status: TextView = findViewById(R.id.statusTextView)
+                        finish()
+                    }
 
-                        if (notStarted) {
-                            status.text = "Waiting for opponent"
-                        } else {
-                            gameStarted = true
-                            val cancelButton: Button = findViewById(R.id.cancelButton)
-                            cancelButton.visibility = View.GONE
-                            cancelButton.invalidate()
+                    val game = ResponseUtil.parseJson(responseBody)
 
-                            val resignButton: Button = findViewById(R.id.resignButton)
-                            resignButton.visibility = View.VISIBLE
-                            resignButton.invalidate()
+                    if (game == null) {
+                        showMessage("Invalid response from server. Try again soon")
+                        finish()
+                    }
 
-                            if (playersTurn) {
-                                status.text = "Your turn"
-                            } else {
-                                status.text = "Opponents turn"
-                            }
+                    if (game["gameState"] != null) {
 
-                            val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
-                            checkersBoard.gameStarted = true
+                        logicalBoard = Game(game["gameState"])
+                        val accountId = StorageUtil.getData("accountId")
+
+                        Log.e("STATE", game["gameState"].toString())
+
+                        if (accountId == null) {
+                            restartApp()
                         }
 
-                        updateCheckerBoard(logicalBoard, playersTurn, isBlack)
+                        currentMove = parseCurrentMove(game["gameState"]!!)
+                        playersTurn = accountId == game["currentTurnId"]
+                        isBlack = accountId == game["blackAccountId"]
+                        val notStarted = game["blackAccountId"] == null || game["redAccountId"] == null
+
+                        runOnUiThread {
+                            val status: TextView = findViewById(R.id.statusTextView)
+
+                            if (notStarted) {
+                                status.text = "Waiting for opponent"
+                            } else {
+                                gameStarted = true
+                                val cancelButton: Button = findViewById(R.id.cancelButton)
+                                cancelButton.visibility = View.GONE
+                                cancelButton.invalidate()
+
+                                val resignButton: Button = findViewById(R.id.resignButton)
+                                resignButton.visibility = View.VISIBLE
+                                resignButton.invalidate()
+
+                                if (playersTurn) {
+                                    status.text = "Your turn"
+                                } else {
+                                    status.text = "Opponents turn"
+                                }
+
+                                val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+                                checkersBoard.gameStarted = true
+                            }
+                        }
+                        continuation.resume("")
                     }
                 }
-            }
-        })
+            })
+        }
+    }
+
+    private suspend fun lookupWebSocketServer(): String {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
+        val request = Request.Builder()
+            .url("https://" + BuildConfig.BASE_URL + "/websocketservers/server")
+            .build()
+
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    showMessage("Connection error. Please try again")
+                    continuation.resumeWithException(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val responseBody = response.body?.string() ?: ""
+                    continuation.resume(responseBody)
+                }
+            })
+        }
     }
 
     private fun parseCurrentMove(state: String): Int {
@@ -454,7 +548,11 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun sendMove() {
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
         val gson = Gson()
         val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
         val requestBody = createMoveListForPost()
@@ -547,7 +645,11 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun cancelGame() {
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
         val sessionId = StorageUtil.getData("sessionId")
         val json = JSONObject()
         val mediaType = "application/json; charset=utf-8".toMediaType()

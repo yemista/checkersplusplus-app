@@ -17,6 +17,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
 class ResetPasswordActivity : AppCompatActivity() {
@@ -96,7 +97,11 @@ class ResetPasswordActivity : AppCompatActivity() {
         val confirmPassword = confirmPasswordEditText.text.toString()
         val verificationCode = verificationCodeEditText.text.toString()
 
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
         val json = JSONObject()
         json.put("username", username)
         json.put("password", password)

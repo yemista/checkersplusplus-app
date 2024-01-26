@@ -4,9 +4,17 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -15,6 +23,10 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 
 class MainActivity : AppCompatActivity() {
@@ -26,6 +38,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var verifyAccountButton: Button
     private lateinit var resetPasswordButton: Button
     private var buttonPressed: Boolean = false
+    private val lock = Any()
+    private val loginSuccessful: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +56,16 @@ class MainActivity : AppCompatActivity() {
 
         // Set up the button click listeners
         loginButton.setOnClickListener {
-            performLogin()
+            val networkScope = CoroutineScope(Dispatchers.IO)
+            networkScope.launch {
+                try {
+                    performLogin()
+                } catch (e: CancellationException) {
+                    // Ignore cancellation
+                } catch (e: Exception) {
+                    Log.e("LOGIN_EXCEPTION", e.toString())
+                }
+            }
         }
         createAccountButton.setOnClickListener {
             val intent = Intent(this, CreateAccountActivity::class.java)
@@ -70,9 +93,7 @@ class MainActivity : AppCompatActivity() {
 
         }
 
-        runOnUiThread {
-            verifyVersion()
-        }
+        verifyVersion()
     }
 
     private fun showResponseDialog(message: String, shouldClose: Boolean) {
@@ -107,7 +128,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun verifyVersion() {
-       val client = OkHttpClient()
+       val client = OkHttpClient.Builder()
+           .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+           .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+           .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+           .build()
         val request = Request.Builder()
             .url("https://" + BuildConfig.BASE_URL + "/account/version")
             .get()
@@ -117,7 +142,7 @@ class MainActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
-                showResponseDialog("Network error. Failed to connect: ${e.message}", true)
+                showResponseDialog("Bad network connection. Try restarting the app.", true)
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -135,17 +160,13 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun performLogin() {
-        if (buttonPressed) {
-            return
-        }
-
+    private suspend fun performLogin(): String {
         val username = usernameEditText.text.toString()
         val password = passwordEditText.text.toString()
 
         if (username.isBlank() || password.isBlank()) {
-            showMessage("Username or password cannot be empty")
-            return
+            showMessage("Username or password cannot be empty", null)
+            return ""
         }
 
         // Prepare JSON body
@@ -153,80 +174,93 @@ class MainActivity : AppCompatActivity() {
         val jsonBody = "{\"username\":\"$username\",\"password\":\"$password\"}"
 
         // Create request
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
         val requestBody = jsonBody.toRequestBody(jsonMediaType)
         val request = Request.Builder()
             .url("https://" + BuildConfig.BASE_URL + "/account/login")
             .post(requestBody)
             .build()
 
-        // Make asynchronous network call
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                // Handle failed network request
-                showMessage("Network error. Failed to connect: ${e.message}")
-                buttonPressed = false
-            }
+        return suspendCancellableCoroutine { continuation ->
+                val call = client.newCall(request)
+                call.enqueue(object : Callback {
+                    override fun onResponse(call: Call, response: Response) {
+                        if (response.isSuccessful) {
+                            val responseBody = response.body?.string()
 
-            override fun onResponse(call: Call, response: Response) {
-                val responseBody = response.body?.string()
+                            if (responseBody == null) {
+                                showMessage("No response from server. Try again soon", null)
+                                return
+                            }
 
-                if (responseBody == null) {
-                    showMessage("No response from server. Try again soon")
-                    return
-                }
+                            val loginResponse = ResponseUtil.parseJson(responseBody)
 
-                val loginResponse = ResponseUtil.parseJson(responseBody)
+                            if (loginResponse == null) {
+                                showMessage("Invalid response from server. Try again soon", null)
+                                return
+                            }
 
-                if (loginResponse == null) {
-                    showMessage("Invalid response from server. Try again soon")
-                    return
-                }
+                            val message = loginResponse["message"]
 
-                val message = loginResponse["message"]
+                            val sessionId = loginResponse["sessionId"]
+                            val gameId = loginResponse["gameId"]
+                            val accountId = loginResponse["accountId"]
 
-                if (message != null) {
-                    showMessage(message)
+                            // Should never happen
+                            if (accountId == null || sessionId == null) {
+                                showMessage("Server response missing data. Try again soon", null)
+                                return
+                            }
 
-                    if (response.isSuccessful == false) {
-                        return
+                            if (sessionId != null) {
+                                StorageUtil.saveData("sessionId", sessionId)
+                            }
+
+                            if (accountId != null) {
+                                StorageUtil.saveData("accountId", accountId)
+                            }
+
+                            buttonPressed = false
+                            var intent: Intent
+
+                            if (gameId != null) {
+                                intent = Intent(this@MainActivity, GameActivity::class.java)
+                                intent.putExtra("gameId", gameId)
+                            } else {
+                                intent = Intent(this@MainActivity, OpenGamesActivity::class.java)
+                            }
+
+                            if (message != null) {
+                                showMessage(message, intent)
+                            } else {
+                                startActivity(intent)
+                            }
+                            continuation.resume(responseBody)
+                        } else {
+                            continuation.resumeWithException(IOException("Failed to load data"))
+                        }
+                    }
+
+                    override fun onFailure(call: Call, e: IOException) {
+                        continuation.resumeWithException(e)
+                    }
+                })
+
+                continuation.invokeOnCancellation {
+                    try {
+                        call.cancel()
+                    } catch (ex: Throwable) {
+                        // Ignore cancellation exception
                     }
                 }
-
-                val sessionId = loginResponse["sessionId"]
-                val gameId = loginResponse["gameId"]
-                val accountId = loginResponse["accountId"]
-
-                // Should never happen
-                if (accountId == null || sessionId == null) {
-                    showMessage("Server response missing data. Try again soon")
-                    return
-                }
-
-                if (sessionId != null) {
-                    StorageUtil.saveData("sessionId", sessionId)
-                }
-
-                if (accountId != null) {
-                    StorageUtil.saveData("accountId", accountId)
-                }
-
-                buttonPressed = false
-
-                if (gameId != null) {
-                    val intent = Intent(this@MainActivity, GameActivity::class.java)
-                    intent.putExtra("gameId", gameId)
-                    startActivity(intent)
-                } else {
-                    val intent = Intent(this@MainActivity, OpenGamesActivity::class.java)
-                    startActivity(intent)
-                }
-
-            }
-        })
+        }
     }
 
-    private fun showMessage(message: String) {
+    private fun showMessage(message: String, intent: Intent?) {
         runOnUiThread {
             // Create an AlertDialog builder
             val builder = AlertDialog.Builder(this)
@@ -245,10 +279,14 @@ class MainActivity : AppCompatActivity() {
 
             // Set a dismiss listener on the dialog
             dialog.setOnDismissListener {
-
+                if (intent != null) {
+                    startActivity(intent)
+                }
             }
 
-            dialog.show()
+            if (lifecycle.currentState == Lifecycle.State.RESUMED) {
+                dialog.show()
+            }
 
             // Optionally, prevent the dialog from being canceled when touched outside
             dialog.setCanceledOnTouchOutside(false)

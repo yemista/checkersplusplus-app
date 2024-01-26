@@ -10,6 +10,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
@@ -184,6 +185,8 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
     }
 
     fun doServerMove(squares: List<CheckerSquare>, cb: () -> Unit) {
+        Thread.sleep(2000)
+
         moveCheckerFromServer(0, 1, squares, cb)
     }
 
@@ -512,6 +515,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 val entry = iterator.next()
 
                 if (checker != entry && overlap(checker, entry)) {
+                    Log.e("OVERLAP", "OVERLAP1")
                     val temp: CheckersBitmapLocationInfo = checker
                     iterator.remove()
                     removedBitmapInfo.add(temp)
@@ -553,6 +557,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 val entry = iterator.next()
 
                 if (checker != entry && overlap(checker, entry)) {
+                    Log.e("OVERLAP", "OVERLAP2")
                     val temp: CheckersBitmapLocationInfo = checker
                     iterator.remove()
                     removedBitmapInfo.add(temp)
@@ -622,6 +627,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 val entry = iterator.next()
 
                 if (checker != entry && overlap(checker, entry)) {
+                    Log.e("OVERLAP", "OVERLAP3")
                     val temp: CheckersBitmapLocationInfo = checker
                     iterator.remove()
                     removedBitmapInfo.add(temp)
@@ -687,6 +693,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 val entry = iterator.next()
 
                 if (checker != entry && overlap(checker, entry)) {
+                    Log.e("OVERLAP", "OVERLAP4")
                     val temp: CheckersBitmapLocationInfo = checker
                     iterator.remove()
                     removedBitmapInfo.add(temp)

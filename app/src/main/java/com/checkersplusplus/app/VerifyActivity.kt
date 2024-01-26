@@ -12,6 +12,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class VerifyActivity : AppCompatActivity() {
 
@@ -47,7 +48,11 @@ class VerifyActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val client = OkHttpClient()
+            val client = OkHttpClient.Builder()
+                .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+                .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+                .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+                .build()
             val json = JSONObject()
             json.put("verificationCode", verificationCode)
             json.put("username", username)
@@ -104,7 +109,11 @@ class VerifyActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val client = OkHttpClient()
+            val client = OkHttpClient.Builder()
+                .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+                .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+                .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+                .build()
             val json = JSONObject()
             json.put("username", username)
 
