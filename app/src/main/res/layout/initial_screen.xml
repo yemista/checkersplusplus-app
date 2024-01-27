@@ -41,6 +41,12 @@
         android:maxLines="1"
         android:layout_marginTop="8dp"/>
 
+    <CheckBox
+        android:id="@+id/checkboxSaveUsername"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Save login information" />
+
 
     <!-- Login Button -->
     <Button

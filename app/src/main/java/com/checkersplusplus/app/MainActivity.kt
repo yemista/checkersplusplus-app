@@ -1,14 +1,19 @@
 package com.checkersplusplus.app
 
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -63,7 +68,6 @@ class MainActivity : AppCompatActivity() {
                 } catch (e: CancellationException) {
                     // Ignore cancellation
                 } catch (e: Exception) {
-                    Log.e("LOGIN_EXCEPTION", e.toString())
                 }
             }
         }
@@ -90,10 +94,51 @@ class MainActivity : AppCompatActivity() {
                 e.printStackTrace()
                 // Handle the error or show a message to the user
             }
+        }
 
+        val checkboxSaveUsername = findViewById<CheckBox>(R.id.checkboxSaveUsername)
+        val sharedPreferences = getSharedPreferences("CheckersPlusPlusAppPrefs", Context.MODE_PRIVATE)
+        val savedUsername = sharedPreferences.getString("username", null)
+        savedUsername?.let {
+            usernameEditText.setText(it)
+            checkboxSaveUsername.isChecked = true
+        }
+
+        val savedPassword = sharedPreferences.getString("password", null)
+        savedPassword?.let {
+            passwordEditText.setText(it)
+            checkboxSaveUsername.isChecked = true
+        }
+
+        checkboxSaveUsername.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                // Save the username to shared preferences
+                val username = usernameEditText.text.toString()
+                val password = passwordEditText.text.toString()
+                saveLoginInformation(username, password)
+            } else {
+                // Clear the saved username
+                saveLoginInformation(null, null)
+            }
         }
 
         verifyVersion()
+    }
+
+    private fun saveLoginInformation(username: String?, password: String?) {
+        val sharedPreferences = getSharedPreferences("CheckersPlusPlusAppPrefs", Context.MODE_PRIVATE)
+
+        if (username != null) {
+            sharedPreferences.edit().putString("username", username).apply()
+        } else {
+            sharedPreferences.edit().remove("username").apply()
+        }
+
+        if (username != null) {
+            sharedPreferences.edit().putString("password", password).apply()
+        } else {
+            sharedPreferences.edit().remove("password").apply()
+        }
     }
 
     private fun showResponseDialog(message: String, shouldClose: Boolean) {

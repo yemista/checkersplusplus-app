@@ -13,11 +13,17 @@ import androidx.lifecycle.lifecycleScope
 import com.checkersplusplus.engine.Coordinate
 import com.checkersplusplus.engine.CoordinatePair
 import com.checkersplusplus.engine.Game
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -49,7 +55,9 @@ class GameActivity : AppCompatActivity() {
     private val lock = Any()
     private var buttonPressed: Boolean = false
     private var isBlack: Boolean = false
+    private var connected: Boolean = false
     private lateinit var logicalBoard: Game
+    private var mInterstitialAd: InterstitialAd? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,12 +86,36 @@ class GameActivity : AppCompatActivity() {
                 } catch (e: CancellationException) {
                     // Ignore cancellation
                 } catch (e: Exception) {
-                    Log.e("LOGIN_EXCEPTION", e.toString())
                     finish()
                 }
             }
         }
 
+        MobileAds.initialize(this) {
+
+        }
+
+        var mAdView = findViewById<AdView>(R.id.adView)
+        val adRequest1: AdRequest = AdRequest.Builder().build()
+        mAdView.loadAd(adRequest1)
+
+        var mAdView2 = findViewById<AdView>(R.id.adView2)
+        val adRequest2: AdRequest = AdRequest.Builder().build()
+        mAdView2.loadAd(adRequest2)
+
+        val adRequest = AdRequest.Builder().build()
+        InterstitialAd.load(this, "ca-app-pub-3940256099942544/1033173712", adRequest,
+            object : InterstitialAdLoadCallback() {
+                override fun onAdLoaded(interstitialAd: InterstitialAd) {
+                    // The mInterstitialAd reference will be null until
+                    // an ad is loaded.
+                    mInterstitialAd = interstitialAd
+                }
+
+                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                    mInterstitialAd = null
+                }
+            })
         //MobileAds.initialize(this) {}
         //loadRewardedAd()
     }
@@ -192,7 +224,6 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun startWebSocket(serverIp: String) {
-        Log.e("SERVER", serverIp)
 
         val request = Request.Builder().url("wss://" + serverIp + ":8080/checkersplusplus/api/updates").build()
         val listener = object : WebSocketListener() {
@@ -201,23 +232,20 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                if (gameStarted) {
-                    //startWebSocket(serverIp)
-                }
+
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                Log.e("WEBSOCKET_ERROR", t.toString())
+                webSocket.close(1000, null)
+                connected = false
 
                 if (gameStarted) {
-                    //startWebSocket(serverIp)
+                    showFailuredialog()
                 }
             }
 
             override fun onMessage(webSocket: WebSocket, message: String) {
-                Log.e("MESSAGE", message)
-
-                if (message.startsWith("MOVE")) {
+               if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
                     runOnUiThread {
                         processMoveFromServer(parts[1], parts[2])
@@ -271,18 +299,18 @@ class GameActivity : AppCompatActivity() {
         webSocket = webSocketClient.newWebSocket(request, listener)
         val sessionId = StorageUtil.getData("sessionId")
         webSocket.send(sessionId)
+        connected = true
 
         runOnUiThread {
             updateCheckerBoard(logicalBoard, playersTurn, isBlack)
         }
 
         lifecycleScope.launch(Dispatchers.IO) { // Starts a coroutine in the background thread
-            // Code to run in background
-            // For example, a network call or database operation
-            val sessionId = StorageUtil.getData("sessionId")
-            webSocket.send(sessionId)
-            Thread.sleep(1000 * 45)
-
+            while (connected) {
+                val sessionId = StorageUtil.getData("sessionId")
+                webSocket.send(sessionId)
+                delay(45_000)
+            }
             withContext(Dispatchers.Main) {
                 // Code to run on the main thread, like updating the UI
             }
@@ -334,6 +362,8 @@ class GameActivity : AppCompatActivity() {
 
                 currentMove++
                 checkersBoard.game!!.doMove(coordinatePairs)
+            } else {
+                return
             }
         }
 
@@ -430,8 +460,6 @@ class GameActivity : AppCompatActivity() {
 
                         logicalBoard = Game(game["gameState"])
                         val accountId = StorageUtil.getData("accountId")
-
-                        Log.e("STATE", game["gameState"].toString())
 
                         if (accountId == null) {
                             restartApp()
@@ -567,7 +595,7 @@ class GameActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                showMessage("Network error. Failed to connect: ${e.message}")
+                showMessage("Connection error. Try again.")
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -587,8 +615,41 @@ class GameActivity : AppCompatActivity() {
 
                     showMessage(game["message"].toString())
                 }
+
+                response.close()
             }
         })
+    }
+
+    private fun showFailuredialog() {
+        runOnUiThread {
+            gameStarted = false
+
+            // Create an AlertDialog builder
+            val builder = AlertDialog.Builder(this)
+
+            // Set the message to show in the dialog
+            builder.setMessage("Network error. Please login back in to resume your game.")
+
+            // Add a button to close the dialog
+            builder.setPositiveButton("Close") { dialog, _ ->
+                // User clicked the "Close" button, so dismiss the dialog
+                dialog.dismiss()
+            }
+
+            // Create and show the AlertDialog
+            val dialog = builder.create()
+
+            // Set a dismiss listener on the dialog
+            dialog.setOnDismissListener {
+                restartApp()
+            }
+
+            dialog.show()
+
+            // Optionally, prevent the dialog from being canceled when touched outside
+            dialog.setCanceledOnTouchOutside(false)
+        }
     }
 
     private fun showEndGameDialog(message: String) {
@@ -612,7 +673,9 @@ class GameActivity : AppCompatActivity() {
 
             // Set a dismiss listener on the dialog
             dialog.setOnDismissListener {
-                // Close the activity when the dialog is dismissed
+                if (mInterstitialAd != null && shouldShowAd()) {
+                    mInterstitialAd?.show(this)
+                }
                 finish()
             }
 
@@ -621,6 +684,10 @@ class GameActivity : AppCompatActivity() {
             // Optionally, prevent the dialog from being canceled when touched outside
             dialog.setCanceledOnTouchOutside(false)
         }
+    }
+
+    private fun shouldShowAd(): Boolean {
+        return true
     }
 
     override fun onBackPressed() {
