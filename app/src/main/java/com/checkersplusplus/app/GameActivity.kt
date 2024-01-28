@@ -441,6 +441,7 @@ class GameActivity : AppCompatActivity() {
 
                     if (responseBody == null) {
                         showMessage("No response from server. Try again soon")
+                        finish()
                     }
 
                     if (response.code == 404 /*NOT_FOUND*/) {
@@ -495,6 +496,7 @@ class GameActivity : AppCompatActivity() {
                                 checkersBoard.gameStarted = true
                             }
                         }
+                        response.close()
                         continuation.resume("")
                     }
                 }

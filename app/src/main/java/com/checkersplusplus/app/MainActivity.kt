@@ -234,23 +234,23 @@ class MainActivity : AppCompatActivity() {
                 val call = client.newCall(request)
                 call.enqueue(object : Callback {
                     override fun onResponse(call: Call, response: Response) {
+                        val responseBody = response.body?.string()
+
+                        if (responseBody == null) {
+                            showMessage("No response from server. Try again soon", null)
+                            return
+                        }
+
+                        val loginResponse = ResponseUtil.parseJson(responseBody)
+
+                        if (loginResponse == null) {
+                            showMessage("Invalid response from server. Try again soon", null)
+                            return
+                        }
+
+                        val message = loginResponse["message"]
+
                         if (response.isSuccessful) {
-                            val responseBody = response.body?.string()
-
-                            if (responseBody == null) {
-                                showMessage("No response from server. Try again soon", null)
-                                return
-                            }
-
-                            val loginResponse = ResponseUtil.parseJson(responseBody)
-
-                            if (loginResponse == null) {
-                                showMessage("Invalid response from server. Try again soon", null)
-                                return
-                            }
-
-                            val message = loginResponse["message"]
-
                             val sessionId = loginResponse["sessionId"]
                             val gameId = loginResponse["gameId"]
                             val accountId = loginResponse["accountId"]
@@ -286,6 +286,10 @@ class MainActivity : AppCompatActivity() {
                             }
                             continuation.resume(responseBody)
                         } else {
+                            if (message != null) {
+                                showMessage(message, null)
+                            }
+
                             continuation.resumeWithException(IOException("Failed to load data"))
                         }
                     }

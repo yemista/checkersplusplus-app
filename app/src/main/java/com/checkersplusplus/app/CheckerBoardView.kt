@@ -203,6 +203,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
     ) {
         if (to == squares.size) {
             cb()
+            removeTakenPiecesIfNecessary()
             return
         }
 
@@ -279,6 +280,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
             //waitForAnimations()
             doLogicalMove()
             clearSelected()
+            removeTakenPiecesIfNecessary()
             invalidate()
             return
         }
@@ -350,6 +352,28 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 square.x + (squareSize * BITMAP_OFFSET), square.y + (squareSize * BITMAP_OFFSET),
                 duration, from, to, toRow, toCol
             )
+        }
+    }
+
+    private fun removeTakenPiecesIfNecessary() {
+        for (i in 0..7) {
+            for (j in 0..7) {
+                val piece: Checker? = game?.board?.getPiece(Coordinate(i, j))
+                val iterator = bitmapInfo.iterator()
+
+                while (iterator.hasNext()) {
+                    val entry = iterator.next()
+                    val positionRow = if (isBlack) translateNumber(j) else j
+                    val positionCol = if (!isBlack) translateNumber(i) else i
+
+                    if (entry.col == positionCol && entry.row == positionRow && piece == null) {
+                        val temp: CheckersBitmapLocationInfo = entry
+                        iterator.remove()
+                        removedBitmapInfo.add(temp)
+                        break
+                    }
+                }
+            }
         }
     }
 
