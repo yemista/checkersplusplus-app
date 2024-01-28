@@ -1,6 +1,7 @@
 package com.checkersplusplus.app
 
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -689,7 +690,17 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun shouldShowAd(): Boolean {
-        return true
+        val sharedPreferences = getSharedPreferences("CheckersPlusPlusAppPrefs", Context.MODE_PRIVATE)
+        var numGames = sharedPreferences.getInt("numGames", 0)
+        numGames += 1
+
+        if (numGames >= 5) {
+            sharedPreferences.edit().putInt("numGames", 0).apply()
+            return true
+        } else {
+            sharedPreferences.edit().putInt("numGames", numGames).apply()
+            return false
+        }
     }
 
     override fun onBackPressed() {
