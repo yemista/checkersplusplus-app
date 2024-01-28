@@ -277,7 +277,6 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
     private fun moveChecker(from: Int, to: Int) {
         if (to == selectedSquares.size) {
-            //waitForAnimations()
             doLogicalMove()
             clearSelected()
             removeTakenPiecesIfNecessary()

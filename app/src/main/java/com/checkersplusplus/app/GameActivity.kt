@@ -149,14 +149,17 @@ class GameActivity : AppCompatActivity() {
             var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
 
             if (checkersBoard.shouldDoMove()) {
-               sendMove()
-               runOnUiThread {
-                   checkersBoard.doMove()
-                   setTurn(false)
-                   checkersBoard.invalidate()
-                   checkersBoard.requestLayout()
-                   buttonPressed = false
-               }
+                lifecycleScope.launch {
+                    withContext(Dispatchers.Main) {
+                        checkersBoard.doMove()
+                        setTurn(false)
+                        checkersBoard.invalidate()
+                        checkersBoard.requestLayout()
+                        buttonPressed = false
+                    }
+
+                    sendMove()
+                }
             } else {
                 runOnUiThread {
                     Toast.makeText(
