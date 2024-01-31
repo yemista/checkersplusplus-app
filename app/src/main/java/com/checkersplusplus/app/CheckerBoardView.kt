@@ -1,5 +1,7 @@
 package com.checkersplusplus.app
 
+import android.R.attr.end
+import android.R.attr.start
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
@@ -22,6 +24,7 @@ import com.checkersplusplus.engine.pieces.King
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
+
 
 class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     private val BITMAP_SCALE_FACTOR: Float = 0.9f
@@ -185,20 +188,15 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         }
     }
 
-    fun doServerMove(squares: List<CheckerSquare>, cb: () -> Unit) {
-        Thread.sleep(2000)
-
-        moveCheckerFromServer(0, 1, squares, cb)
-
-        Thread.sleep(1000)
-
-
+    fun doServerMove(squares: List<CheckerSquare>, isKing: Boolean, cb: () -> Unit) {
+        moveCheckerFromServer(0, 1, squares, isKing, cb)
     }
 
     private fun moveCheckerFromServer(
         from: Int,
         to: Int,
         squares: List<CheckerSquare>,
+        isKing: Boolean,
         cb: () -> Unit
     ) {
         if (to == squares.size) {
@@ -233,6 +231,15 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
             return
         }
 
+        var isKingInternal: Boolean
+
+        val logicalFromRow = squares[from].row
+        val logicalFromCol = squares[from].col
+        val logicalToRow = squares[to].row
+        val logicalToCol = squares[to].col
+
+        isKingInternal = isKing
+
         val duration = distance(squares[from].row, squares[from].col,
             squares[to].row, squares[to].col) * (1500 / 8)
         val squareSize = width / 8
@@ -265,17 +272,80 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 entry,
                 square1!!.x + (squareSize * BITMAP_OFFSET), square1.y + (squareSize * BITMAP_OFFSET),
                 duration / 2, from, to, squares[to].row, squares[to].col, square2.x + (squareSize * BITMAP_OFFSET),
-                square2.y + (squareSize * BITMAP_OFFSET), squares, cb)
+                square2.y + (squareSize * BITMAP_OFFSET), squares, isKingInternal, cb)
+        } else if (isKingInternal && isFlyingKingCornerJump(logicalFromRow, logicalFromCol, logicalToRow, logicalToCol)) {
+            val square2 = square
+            var square1: CheckerSquare? = null
+
+            var square1ToCol: Int = 0
+            var square1ToRow: Int = 0
+
+            if (logicalToRow > logicalFromRow) {
+                var tmpRow: Int = logicalFromRow
+                var tmpCol: Int = logicalFromCol
+
+                if (logicalToCol > logicalFromCol) {
+                    while (tmpCol < 7) {
+                        tmpRow++
+                        tmpCol++
+                    }
+
+                    square1ToRow = tmpRow
+                    square1ToCol = tmpCol
+                } else {
+                    while (tmpCol > 0) {
+                        tmpRow++
+                        tmpCol--
+                    }
+
+                    square1ToRow = tmpRow
+                    square1ToCol = tmpCol
+                }
+            } else {
+                var tmpRow: Int = logicalFromRow
+                var tmpCol: Int = logicalFromCol
+
+                if (logicalToCol > logicalFromCol) {
+                    while (tmpCol < 7) {
+                        tmpRow--
+                        tmpCol++
+                    }
+
+                    square1ToRow = tmpRow
+                    square1ToCol = tmpCol
+                } else {
+                    while (tmpCol > 0) {
+                        tmpRow--
+                        tmpCol--
+                    }
+
+                    square1ToRow = tmpRow
+                    square1ToCol = tmpCol
+                }
+            }
+
+            for (sq in checkerSquares) {
+                if (sq.row == square1ToRow && sq.col == square1ToCol) {
+                    square1 = sq
+                    break
+                }
+            }
+
+            animateServerCornerJumpPart1(
+                entry,
+                square1!!.x + (squareSize * BITMAP_OFFSET), square1.y + (squareSize * BITMAP_OFFSET),
+                duration / 2, from, to, logicalToRow, logicalToCol, square2.x + (squareSize * BITMAP_OFFSET),
+                square2.y + (squareSize * BITMAP_OFFSET), squares, isKingInternal, cb)
         } else {
             animateServerCheckerMove(
                 entry,
                 square.x + (squareSize * BITMAP_OFFSET), square.y + (squareSize * BITMAP_OFFSET),
-                duration, from, to, squares[to].row, squares[to].col, squares, cb
+                duration, from, to, squares[to].row, squares[to].col, squares, isKingInternal, cb
             )
         }
     }
 
-    private fun moveChecker(from: Int, to: Int) {
+    private fun moveChecker(from: Int, to: Int, isKing: Boolean?) {
         if (to == selectedSquares.size) {
             doLogicalMove()
             clearSelected()
@@ -289,6 +359,16 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         val fromCol = selectedSquares[from].col
         val toRow = selectedSquares[to].row
         val toCol = selectedSquares[to].col
+
+        var isKingInternal: Boolean
+
+        if (isKing == null) {
+            val logicalFromRow = if (isBlack) translateNumber(fromRow) else fromRow
+            val logicalFromCol = if (!isBlack) translateNumber(fromCol) else fromCol
+            isKingInternal = game!!.board!!.getPiece(Coordinate(logicalFromCol, logicalFromRow)) is King
+        } else {
+            isKingInternal = isKing
+        }
 
         for (bitmapEntry in bitmapInfo) {
             if (bitmapEntry.row == fromRow && bitmapEntry.col == fromCol) {
@@ -344,12 +424,75 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 entry,
                 square1!!.x + (squareSize * BITMAP_OFFSET), square1.y + (squareSize * BITMAP_OFFSET),
                 duration / 2, from, to, toRow, toCol, square2.x + (squareSize * BITMAP_OFFSET),
-                square2.y + (squareSize * BITMAP_OFFSET))
+                square2.y + (squareSize * BITMAP_OFFSET), isKingInternal)
+        } else if (isKingInternal && isFlyingKingCornerJump(fromRow, fromCol, toRow, toCol)) {
+            val square2 = square
+            var square1: CheckerSquare? = null
+
+            var square1ToCol: Int = 0
+            var square1ToRow: Int = 0
+
+            if (toRow > fromRow) {
+                var tmpRow: Int = fromRow
+                var tmpCol: Int = fromCol
+
+                if (toCol > fromCol) {
+                    while (tmpCol < 7) {
+                        tmpRow++
+                        tmpCol++
+                    }
+
+                    square1ToRow = tmpRow
+                    square1ToCol = tmpCol
+                } else {
+                    while (tmpCol > 0) {
+                        tmpRow++
+                        tmpCol--
+                    }
+
+                    square1ToRow = tmpRow
+                    square1ToCol = tmpCol
+                }
+            } else {
+                var tmpRow: Int = fromRow
+                var tmpCol: Int = fromCol
+
+                if (toCol > fromCol) {
+                    while (tmpCol < 7) {
+                        tmpRow--
+                        tmpCol++
+                    }
+
+                    square1ToRow = tmpRow
+                    square1ToCol = tmpCol
+                } else {
+                    while (tmpCol > 0) {
+                        tmpRow--
+                        tmpCol--
+                    }
+
+                    square1ToRow = tmpRow
+                    square1ToCol = tmpCol
+                }
+            }
+
+            for (sq in checkerSquares) {
+                if (sq.row == square1ToRow && sq.col == square1ToCol) {
+                    square1 = sq
+                    break
+                }
+            }
+
+            animateCornerJumpPart1(
+                entry,
+                square1!!.x + (squareSize * BITMAP_OFFSET), square1.y + (squareSize * BITMAP_OFFSET),
+                duration / 2, from, to, toRow, toCol, square2.x + (squareSize * BITMAP_OFFSET),
+                square2.y + (squareSize * BITMAP_OFFSET), isKingInternal)
         } else {
             animateCheckerMove(
                 entry,
                 square.x + (squareSize * BITMAP_OFFSET), square.y + (squareSize * BITMAP_OFFSET),
-                duration, from, to, toRow, toCol
+                duration, from, to, toRow, toCol, isKingInternal
             )
         }
     }
@@ -376,18 +519,48 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         }
     }
 
-    private fun waitForAnimations() {
-        var isMoving = true
+    private fun isFlyingKingCornerJump(
+        fromRow: Int,
+        fromCol: Int,
+        toRow: Int,
+        toCol: Int
+    ): Boolean {
+        if (toCol == 1 || toCol == 6) {
+            var colDirection = 0
+            var rowDirection = 0
 
-        while (isMoving) {
-            isMoving = false
+            if (toCol > fromCol && toRow > fromRow) {
+                colDirection = 1
+                rowDirection = 1
+            } else if (toCol > fromCol && toRow < fromRow) {
+                colDirection = 1
+                rowDirection = -1
+            } else if (toCol < fromCol && toRow > fromRow) {
+                colDirection = -1
+                rowDirection = 1
+            } else {
+                colDirection = -1
+                rowDirection = -1
+            }
 
-            for (bitmapEntry in bitmapInfo) {
-                if (bitmapEntry.moving) {
-                    isMoving = true
+            var startRow: Int = fromRow
+            var startCol: Int = fromCol
+
+            while (startCol < 7 && startCol > 0) {
+                startRow += rowDirection
+                startCol += colDirection
+                if (startCol == 7 || startCol == 0) {
+                    break
                 }
             }
+
+            if (abs(toRow - startRow) === 1 && abs(toCol - startCol) === 1) {
+                Log.e("ISFK", "TRUE")
+                return true
+            }
         }
+
+        return false
     }
 
     private fun isCornerJump(fromRow: Int, fromCol: Int, toRow: Int, toCol: Int): Boolean {
@@ -395,7 +568,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
             return false
         }
 
-        if (fromCol != 1 && toCol != 6) {
+        if (fromCol != 1 && fromCol != 6) {
             return false
         }
 
@@ -519,7 +692,8 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
     private fun animateServerCheckerMove(
         checker: CheckersBitmapLocationInfo, toX: Float, toY: Float,
         duration: Long, from: Int, to: Int,
-        toRow: Int, toCol: Int, squares: List<CheckerSquare>, cb: () -> Unit
+        toRow: Int, toCol: Int, squares: List<CheckerSquare>,
+        isKing: Boolean, cb: () -> Unit
     ) {
         val animatorX = ObjectAnimator.ofFloat(checker, "x", toX)
         val animatorY = ObjectAnimator.ofFloat(checker, "y", toY)
@@ -551,7 +725,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
                 checkForPromotionToKing(checker)
 
-                moveCheckerFromServer(to, to + 1, squares, cb)
+                moveCheckerFromServer(to, to + 1, squares, isKing, cb)
             }
         })
         animatorY.addUpdateListener { invalidate() }
@@ -562,7 +736,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
     private fun animateCheckerMove(checker: CheckersBitmapLocationInfo, toX: Float, toY: Float,
                                    duration: Long, from: Int, to: Int,
-                                   toRow: Int, toCol: Int) {
+                                   toRow: Int, toCol: Int, isKing: Boolean) {
         val animatorX = ObjectAnimator.ofFloat(checker, "x", toX)
         val animatorY = ObjectAnimator.ofFloat(checker, "y", toY)
 
@@ -590,9 +764,9 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 checker.row = toRow
                 checker.col = toCol
 
-                checkForPromotionToKing(checker)
+                val isKing = checkForPromotionToKing(checker) || isKing
 
-                moveChecker(to, to + 1)
+                moveChecker(to, to + 1, isKing)
             }
         })
         animatorY.addUpdateListener { invalidate() }
@@ -601,7 +775,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         animatorY.start()
     }
 
-    private fun checkForPromotionToKing(checker: CheckersBitmapLocationInfo) {
+    private fun checkForPromotionToKing(checker: CheckersBitmapLocationInfo): Boolean {
         val toRow = if (isBlack) translateNumber(checker.row) else checker.row
 
         if (toRow == 7 && !checker.isKing && checker.isBlack) {
@@ -614,6 +788,8 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 (squareSize.toInt() * BITMAP_SCALE_FACTOR).toInt(),
                 false
             )
+
+            return true
         }
 
         if (toRow == 0 && !checker.isKing && !checker.isBlack) {
@@ -626,12 +802,17 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 (squareSize.toInt() * BITMAP_SCALE_FACTOR).toInt(),
                 false
             )
+
+            return true
         }
+
+        return false
     }
 
     private fun animateCornerJumpPart1(checker: CheckersBitmapLocationInfo, toX: Float, toY: Float,
                                    duration: Long, from: Int, to: Int,
-                                   toRow: Int, toCol: Int, toXPart2: Float, toYPart2: Float) {
+                                   toRow: Int, toCol: Int, toXPart2: Float, toYPart2: Float,
+                                       isKing: Boolean) {
         val animatorX = ObjectAnimator.ofFloat(checker, "x", toX)
         val animatorY = ObjectAnimator.ofFloat(checker, "y", toY)
 
@@ -656,7 +837,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         }
         animatorX.addListener(object : AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: Animator) {
-                animateCornerJumpPart2(checker, toXPart2, toYPart2, duration, from, to, toRow, toCol)
+                animateCornerJumpPart2(checker, toXPart2, toYPart2, duration, from, to, toRow, toCol, isKing)
             }
         })
         animatorY.addUpdateListener { invalidate() }
@@ -667,7 +848,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
     private fun animateCornerJumpPart2(checker: CheckersBitmapLocationInfo, toX: Float, toY: Float,
                                        duration: Long, from: Int, to: Int,
-                                       toRow: Int, toCol: Int) {
+                                       toRow: Int, toCol: Int, isKing: Boolean) {
         val animatorX = ObjectAnimator.ofFloat(checker, "x", toX)
         val animatorY = ObjectAnimator.ofFloat(checker, "y", toY)
 
@@ -683,7 +864,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 checker.row = toRow
                 checker.col = toCol
                 checkForPromotionToKing(checker)
-                moveChecker(to, to + 1)
+                moveChecker(to, to + 1, isKing)
             }
         })
         animatorY.addUpdateListener { invalidate() }
@@ -695,7 +876,8 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
     private fun animateServerCornerJumpPart1(
         checker: CheckersBitmapLocationInfo, toX: Float, toY: Float,
         duration: Long, from: Int, to: Int,
-        toRow: Int, toCol: Int, toXPart2: Float, toYPart2: Float, squares: List<CheckerSquare>, cb: () -> Unit
+        toRow: Int, toCol: Int, toXPart2: Float, toYPart2: Float, squares: List<CheckerSquare>,
+        isKing: Boolean, cb: () -> Unit
     ) {
         val animatorX = ObjectAnimator.ofFloat(checker, "x", toX)
         val animatorY = ObjectAnimator.ofFloat(checker, "y", toY)
@@ -721,7 +903,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         }
         animatorX.addListener(object : AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: Animator) {
-                animateServerCornerJumpPart2(checker, toXPart2, toYPart2, duration, from, to, toRow, toCol, squares, cb)
+                animateServerCornerJumpPart2(checker, toXPart2, toYPart2, duration, from, to, toRow, toCol, squares, isKing, cb)
             }
         })
         animatorY.addUpdateListener { invalidate() }
@@ -733,7 +915,8 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
     private fun animateServerCornerJumpPart2(
         checker: CheckersBitmapLocationInfo, toX: Float, toY: Float,
         duration: Long, from: Int, to: Int,
-        toRow: Int, toCol: Int, squares: List<CheckerSquare>, cb: () -> Unit
+        toRow: Int, toCol: Int, squares: List<CheckerSquare>,
+        isKing: Boolean, cb: () -> Unit
     ) {
         val animatorX = ObjectAnimator.ofFloat(checker, "x", toX)
         val animatorY = ObjectAnimator.ofFloat(checker, "y", toY)
@@ -750,7 +933,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 checker.row = toRow
                 checker.col = toCol
                 checkForPromotionToKing(checker)
-                moveCheckerFromServer(to, to + 1, squares, cb)
+                moveCheckerFromServer(to, to + 1, squares, isKing, cb)
             }
         })
         animatorY.addUpdateListener { invalidate() }
@@ -811,10 +994,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
     }
 
     fun doMove() {
-//        for (idx in 0 until selectedSquares.size - 1) {
-//            moveChecker(idx, idx + 1)
-//        }
-        moveChecker(0, 1)
+        moveChecker(0, 1, null)
     }
 
 }

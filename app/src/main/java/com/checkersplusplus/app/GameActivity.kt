@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import com.checkersplusplus.engine.Coordinate
 import com.checkersplusplus.engine.CoordinatePair
 import com.checkersplusplus.engine.Game
+import com.checkersplusplus.engine.pieces.King
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.LoadAdError
@@ -96,9 +97,9 @@ class GameActivity : AppCompatActivity() {
 
         }
 
-        var mAdView = findViewById<AdView>(R.id.adView)
-        val adRequest1: AdRequest = AdRequest.Builder().build()
-        mAdView.loadAd(adRequest1)
+//        var mAdView = findViewById<AdView>(R.id.adView)
+//        val adRequest1: AdRequest = AdRequest.Builder().build()
+//        mAdView.loadAd(adRequest1)
 
         var mAdView2 = findViewById<AdView>(R.id.adView2)
         val adRequest2: AdRequest = AdRequest.Builder().build()
@@ -149,14 +150,13 @@ class GameActivity : AppCompatActivity() {
             var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
 
             if (checkersBoard.shouldDoMove()) {
-                lifecycleScope.launch {
-                    withContext(Dispatchers.Main) {
-                        checkersBoard.doMove()
-                        setTurn(false)
-                        checkersBoard.invalidate()
-                        checkersBoard.requestLayout()
-                        buttonPressed = false
-                    }
+                CoroutineScope(Dispatchers.Main).launch {
+                    checkersBoard.doMove()
+                    setTurn(false)
+                    setTurn(false)
+                    checkersBoard.invalidate()
+                    checkersBoard.requestLayout()
+                    buttonPressed = false
 
                     sendMove()
                 }
@@ -175,8 +175,23 @@ class GameActivity : AppCompatActivity() {
         val resignButton: Button = findViewById(R.id.resignButton)
 
         resignButton.setOnClickListener {
-            forfeitGame()
-            gameStarted = false
+            val builder = AlertDialog.Builder(this)
+            builder.setTitle("Forfeit")
+            builder.setMessage("Are you sure you want to forfeit this game?")
+
+            // Setting the OK Button
+            builder.setPositiveButton("Yes") { dialog, which ->
+                forfeitGame()
+                gameStarted = false
+            }
+
+            // Setting the Cancel Button
+            builder.setNegativeButton("No") { dialog, which ->
+                dialog.dismiss() // Simply dismiss the dialog
+            }
+
+            // Create and show the dialog
+            builder.create().show()
         }
 
         val cancelButton: Button = findViewById(R.id.cancelButton)
@@ -236,7 +251,7 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-
+                showFailureDialog(reason + " " + code.toString())
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -244,55 +259,134 @@ class GameActivity : AppCompatActivity() {
                 connected = false
 
                 if (gameStarted) {
-                    showFailuredialog()
+                    t.message?.let { showFailureDialog(it) }
                 }
             }
 
             override fun onMessage(webSocket: WebSocket, message: String) {
-               if (message.startsWith("MOVE")) {
+                if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
-                    runOnUiThread {
-                        processMoveFromServer(parts[1], parts[2])
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val deferred = async { acknowledgeGameEvent(parts[3]) }
+                        deferred.await()
+
+                        if (deferred.getCompleted()) {
+                            processMoveFromServer(parts[1], parts[2])
+                        }
                     }
                 } else if (message.startsWith("TIMEOUT_LOSS")) {
-                    showEndGameDialog("You timed out. You lose.")
-                } else if (message.startsWith("TIMEOUT")) {
-                    showEndGameDialog("Opponent timed out. You win.")
-                } else if (message.startsWith("FORFEIT")) {
-                    showEndGameDialog("Opponent forfeits. You win.")
-                } else if (message.startsWith("WIN")) {
-                    showEndGameDialog("You win.")
-                } else if (message.startsWith("LOSE")) {
-                    showEndGameDialog("You lose.")
-                } else if (message.startsWith("DRAW")) {
-                    showEndGameDialog("Draw.")
-                } else if (message.startsWith("BEGIN")) {
-                    if (gameStarted) {
-                        return;
-                    }
+                    val parts = message.split('|')
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val deferred = async { acknowledgeGameEvent(parts[1]) }
+                        deferred.await()
 
-                    gameStarted = true
-
-                    runOnUiThread {
-                        val cancelButton: Button = findViewById(R.id.cancelButton)
-                        cancelButton.visibility = View.GONE
-                        cancelButton.invalidate()
-
-                        val resignButton: Button = findViewById(R.id.resignButton)
-                        resignButton.visibility = View.VISIBLE
-                        resignButton.invalidate()
-
-                        var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
-                        checkersBoard.gameStarted = true
-
-                        val status: TextView = findViewById(R.id.statusTextView)
-                        if (playersTurn) {
-                            status.text = "Your turn"
-                        } else {
-                            status.text = "Opponents turn"
+                        if (deferred.getCompleted()) {
+                            showEndGameDialog("You timed out. You lose.")
                         }
 
-                        status.invalidate()
+                    }
+                } else if (message.startsWith("TIMEOUT")) {
+                    val parts = message.split('|')
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val deferred = async { acknowledgeGameEvent(parts[1]) }
+                        deferred.await()
+
+                        if (deferred.getCompleted()) {
+                            showEndGameDialog("Opponent timed out. You win.")
+                        }
+                    }
+                } else if (message.startsWith("FORFEIT")) {
+                    val parts = message.split('|')
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val deferred = async { acknowledgeGameEvent(parts[2]) }
+                        deferred.await()
+
+                        if (deferred.getCompleted()) {
+                            showEndGameDialog(
+                                "Opponent forfeits. You win. Your new rating is " + message.split(
+                                    '|'
+                                )[1]
+                            )
+                        }
+                    }
+                } else if (message.startsWith("WIN")) {
+                    val parts = message.split('|')
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val deferred = async { acknowledgeGameEvent(parts[2]) }
+                        deferred.await()
+
+                        if (deferred.getCompleted()) {
+                            showEndGameDialog(
+                                "You win. Your new rating is " + message.split(
+                                    '|'
+                                )[1]
+                            )
+                        }
+                    }
+                } else if (message.startsWith("LOSE")) {
+                    val parts = message.split('|')
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val deferred = async { acknowledgeGameEvent(parts[2]) }
+                        deferred.await()
+
+                        if (deferred.getCompleted()) {
+                            showEndGameDialog(
+                                "You lose. Your new rating is " + message.split(
+                                    '|'
+                                )[1]
+                            )
+                        }
+                    }
+                } else if (message.startsWith("DRAW")) {
+                    val parts = message.split('|')
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val deferred = async { acknowledgeGameEvent(parts[1]) }
+                        deferred.await()
+
+                        if (deferred.getCompleted()) {
+                            showEndGameDialog("Draw.")
+                        }
+                    }
+                } else if (message.startsWith("BEGIN")) {
+                    val parts = message.split('|')
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val deferred = async { acknowledgeGameEvent(parts[1]) }
+                        deferred.await()
+
+                        if (deferred.getCompleted()) {
+
+                            if (gameStarted) {
+                                return@launch;
+                            }
+
+                            gameStarted = true
+
+                            runOnUiThread {
+                                val cancelButton: Button =
+                                    findViewById(R.id.cancelButton)
+                                cancelButton.visibility = View.GONE
+                                cancelButton.invalidate()
+
+                                val resignButton: Button =
+                                    findViewById(R.id.resignButton)
+                                resignButton.visibility = View.VISIBLE
+                                resignButton.invalidate()
+
+                                var checkersBoard: CheckerBoardView =
+                                    findViewById(R.id.checkerBoardView)
+                                checkersBoard.gameStarted = true
+
+                                val status: TextView =
+                                    findViewById(R.id.statusTextView)
+                                if (playersTurn) {
+                                    status.text = "Your turn"
+                                } else {
+                                    status.text = "Opponents turn"
+                                }
+
+                                status.invalidate()
+                            }
+                        }
                     }
                 }
             }
@@ -324,6 +418,30 @@ class GameActivity : AppCompatActivity() {
         webSocketClient.dispatcher.executorService.shutdown()
     }
 
+    private suspend fun acknowledgeGameEvent(eventId: String): Boolean {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
+        val request = Request.Builder()
+            .url("https://" + BuildConfig.BASE_URL + "/game/event/" + eventId)
+            .build()
+
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    continuation.resume(false)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    continuation.resume(true)
+                }
+            })
+        }
+    }
+
     private fun processMoveFromServer(moveNum: String, moveList: String) {
         val num = moveNum.toIntOrNull()
 
@@ -334,6 +452,7 @@ class GameActivity : AppCompatActivity() {
         var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
         val movesToAnimate = arrayListOf<Pair<Pair<Int, Int>, Pair<Int, Int>>>()
         val coordinatePairs = arrayListOf<CoordinatePair>()
+        var isKing: Boolean? = null
 
         synchronized(lock) {
             if (num == currentMove + 1) {
@@ -351,6 +470,11 @@ class GameActivity : AppCompatActivity() {
                     val starts = start.split(',')
                     val startRow = if (starts[0].startsWith("r")) parseOutNumber(starts[0]) else parseOutNumber(starts[1])
                     val startCol = if (starts[0].startsWith("c")) parseOutNumber(starts[0]) else parseOutNumber(starts[1])
+
+                    if (isKing == null) {
+                        isKing = checkersBoard.game!!.board!!.getPiece(Coordinate(startCol, startRow)) is King
+                    }
+
                     val end = parts[1]
                     val ends = end.split(',')
                     val endRow = if (ends[0].startsWith("r")) parseOutNumber(ends[0]) else parseOutNumber(ends[1])
@@ -385,7 +509,7 @@ class GameActivity : AppCompatActivity() {
             }
         }
 
-        checkersBoard.doServerMove(squares) {
+        checkersBoard.doServerMove(squares, isKing!!) {
             setTurn(true)
         }
     }
@@ -627,7 +751,7 @@ class GameActivity : AppCompatActivity() {
         })
     }
 
-    private fun showFailuredialog() {
+    private fun showFailureDialog(message: String) {
         runOnUiThread {
             gameStarted = false
 
@@ -635,7 +759,7 @@ class GameActivity : AppCompatActivity() {
             val builder = AlertDialog.Builder(this)
 
             // Set the message to show in the dialog
-            builder.setMessage("Network error. Please login back in to resume your game.")
+            builder.setMessage("Network error. Please login back in to resume your game. " + message)
 
             // Add a button to close the dialog
             builder.setPositiveButton("Close") { dialog, _ ->

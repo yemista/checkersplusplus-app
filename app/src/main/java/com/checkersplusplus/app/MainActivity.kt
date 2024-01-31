@@ -112,10 +112,25 @@ class MainActivity : AppCompatActivity() {
 
         checkboxSaveUsername.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                // Save the username to shared preferences
-                val username = usernameEditText.text.toString()
-                val password = passwordEditText.text.toString()
-                saveLoginInformation(username, password)
+                val builder = AlertDialog.Builder(this)
+                builder.setTitle("Save login information")
+                builder.setMessage("By checking this box your username and password will be saved to the device. Do not check this box if you have any concerns about your passwords safety.")
+
+                // Setting the OK Button
+                builder.setPositiveButton("Yes") { dialog, which ->
+                    val username = usernameEditText.text.toString()
+                    val password = passwordEditText.text.toString()
+                    saveLoginInformation(username, password)
+                }
+
+                // Setting the Cancel Button
+                builder.setNegativeButton("No") { dialog, which ->
+                    dialog.dismiss() // Simply dismiss the dialog
+                }
+
+                // Create and show the dialog
+                builder.create().show()
+
             } else {
                 // Clear the saved username
                 saveLoginInformation(null, null)

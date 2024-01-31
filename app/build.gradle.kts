@@ -11,8 +11,8 @@ android {
         applicationId = "com.checkersplusplus.app"
         minSdk = 24
         targetSdk = 33
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -27,13 +27,13 @@ android {
             //buildConfigField("String", "BASE_URL", "\"192.168.0.25:8080/checkersplusplus/api\"")
             buildConfigField("String", "BASE_URL", "\"server.checkersplusplus.com/checkersplusplus/api\"")
             buildConfigField("String", "APP_VERSION", "\"1.0\"")
-            buildConfigField("Long", "NETWORK_TIMEOUT", "20")
+            buildConfigField("Long", "NETWORK_TIMEOUT", "7L")
         }
         debug {
             //buildConfigField("String", "BASE_URL", "\"192.168.0.25:8080/checkersplusplus/api\"")
             buildConfigField("String", "BASE_URL", "\"server.checkersplusplus.com/checkersplusplus/api\"")
             buildConfigField("String", "APP_VERSION", "\"1.0\"")
-            buildConfigField("Long", "NETWORK_TIMEOUT", "20L")
+            buildConfigField("Long", "NETWORK_TIMEOUT", "7L")
         }
     }
     compileOptions {
