@@ -264,6 +264,8 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onMessage(webSocket: WebSocket, message: String) {
+                //Log.e("MSG", message)
+
                 if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
                     CoroutineScope(Dispatchers.Main).launch {
@@ -436,7 +438,11 @@ class GameActivity : AppCompatActivity() {
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    continuation.resume(true)
+                    if (response.isSuccessful) {
+                        continuation.resume(true)
+                    } else {
+                        continuation.resume(false)
+                    }
                 }
             })
         }

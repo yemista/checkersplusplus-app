@@ -10,6 +10,7 @@ import android.util.Log
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -295,7 +296,19 @@ class MainActivity : AppCompatActivity() {
                             }
 
                             if (message != null) {
-                                showMessage(message, intent)
+                                if (message.contains("successful")) {
+                                    runOnUiThread {
+                                        Toast.makeText(
+                                            applicationContext,
+                                            message,
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        buttonPressed = false
+                                    }
+                                    startActivity(intent)
+                                } else {
+                                    showMessage(message, intent)
+                                }
                             } else {
                                 startActivity(intent)
                             }

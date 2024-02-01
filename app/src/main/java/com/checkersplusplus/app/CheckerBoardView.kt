@@ -525,6 +525,10 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         toRow: Int,
         toCol: Int
     ): Boolean {
+        if (abs(fromCol - toCol) == abs(fromRow - toRow)) {
+            return false;
+        }
+
         if (toCol == 1 || toCol == 6) {
             var colDirection = 0
             var rowDirection = 0
@@ -549,13 +553,14 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
             while (startCol < 7 && startCol > 0) {
                 startRow += rowDirection
                 startCol += colDirection
+
                 if (startCol == 7 || startCol == 0) {
                     break
                 }
             }
 
             if (abs(toRow - startRow) === 1 && abs(toCol - startCol) === 1) {
-                Log.e("ISFK", "TRUE")
+                //Log.e("IS_FKCJ", "TRUE")
                 return true
             }
         }
