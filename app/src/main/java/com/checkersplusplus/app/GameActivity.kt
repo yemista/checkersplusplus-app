@@ -234,7 +234,7 @@ class GameActivity : AppCompatActivity() {
                 val game = ResponseUtil.parseJson(responseBody)
 
                 if (response.isSuccessful) {
-                    showEndGameDialog("You resigned")
+                    showEndGameDialog(game["message"].toString())
                 } else {
                     showMessage(game["message"].toString())
                 }
@@ -406,10 +406,13 @@ class GameActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch(Dispatchers.IO) { // Starts a coroutine in the background thread
-            while (connected) {
+            var attempts = 0
+
+            while (attempts <= 4) {
                 val sessionId = StorageUtil.getData("sessionId")
                 webSocket.send(sessionId)
-                delay(45_000)
+                ++attempts
+                delay(10_000)
             }
             withContext(Dispatchers.Main) {
                 // Code to run on the main thread, like updating the UI
