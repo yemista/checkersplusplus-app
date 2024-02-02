@@ -85,7 +85,7 @@ class GameActivity : AppCompatActivity() {
                     deferred.await()
                     val deferredServerIp = async { lookupWebSocketServer() }
                     deferredServerIp.await()
-                    startWebSocket(deferredServerIp.getCompleted())//"server1.servers.checkersplusplus.com")
+                    startWebSocket(deferredServerIp.getCompleted())
                 } catch (e: CancellationException) {
                     // Ignore cancellation
                 } catch (e: Exception) {
@@ -466,6 +466,8 @@ class GameActivity : AppCompatActivity() {
         synchronized(lock) {
             if (num == currentMove + 1) {
                 val moves = moveList.split('+')
+                var finalEndRow: Int = 0
+                var finalEndCol: Int = 0
 
                 for (move in moves) {
                     if (move.isEmpty()) {
@@ -479,15 +481,12 @@ class GameActivity : AppCompatActivity() {
                     val starts = start.split(',')
                     val startRow = if (starts[0].startsWith("r")) parseOutNumber(starts[0]) else parseOutNumber(starts[1])
                     val startCol = if (starts[0].startsWith("c")) parseOutNumber(starts[0]) else parseOutNumber(starts[1])
-
-                    if (isKing == null) {
-                        isKing = checkersBoard.game!!.board!!.getPiece(Coordinate(startCol, startRow)) is King
-                    }
-
                     val end = parts[1]
                     val ends = end.split(',')
                     val endRow = if (ends[0].startsWith("r")) parseOutNumber(ends[0]) else parseOutNumber(ends[1])
                     val endCol = if (ends[0].startsWith("c")) parseOutNumber(ends[0]) else parseOutNumber(ends[1])
+                    finalEndRow = endRow
+                    finalEndCol = endCol
                     coordinatePairs.add(CoordinatePair(Coordinate(startCol, startRow), Coordinate(endCol, endRow)))
                     val fromRow = if (checkersBoard.isBlack) translateNumber(startRow) else startRow
                     val fromCol = if (!checkersBoard.isBlack) translateNumber(startCol) else startCol
@@ -499,6 +498,8 @@ class GameActivity : AppCompatActivity() {
 
                 currentMove++
                 checkersBoard.game!!.doMove(coordinatePairs)
+
+                isKing = checkersBoard.game!!.board!!.getPiece(Coordinate(finalEndCol, finalEndRow)) is King
             } else {
                 return
             }

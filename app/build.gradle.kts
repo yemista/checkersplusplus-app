@@ -11,8 +11,8 @@ android {
         applicationId = "com.checkersplusplus.app"
         minSdk = 24
         targetSdk = 33
-        versionCode = 5
-        versionName = "5"
+        versionCode = 6
+        versionName = "Release"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
