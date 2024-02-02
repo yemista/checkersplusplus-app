@@ -6,6 +6,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -21,7 +22,9 @@ import com.checkersplusplus.engine.CoordinatePair
 import com.checkersplusplus.engine.Game
 import com.checkersplusplus.engine.pieces.Checker
 import com.checkersplusplus.engine.pieces.King
+import java.lang.Integer.max
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -44,7 +47,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
     private val borderPaint = Paint().apply {
         color = Color.BLACK // Set border color
         style = Paint.Style.STROKE // Stroke style for the border
-        strokeWidth = 4f // Set the width of the border
+        strokeWidth = 4f
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -121,8 +124,19 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         return game!!.isMoveLegal(coordinatesPairs)
     }
 
+    private fun getMaxSize(): Int {
+        val displayMetrics = Resources.getSystem().displayMetrics
+        val screenHeight = displayMetrics.heightPixels * .5
+
+        if (displayMetrics.heightPixels > displayMetrics.widthPixels) {
+            return width
+        }
+
+        return min(width, screenHeight.toInt())
+    }
+
     private fun createCheckers() {
-        val squareSize = width / 8f
+        val squareSize = getMaxSize() / 8f
         val whiteChecker: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.white_checker)
         val blackChecker: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.black_checker)
         val whiteKing: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.king_white_checker)
@@ -243,7 +257,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
         val duration = distance(squares[from].row, squares[from].col,
             squares[to].row, squares[to].col) * (1500 / 8)
-        val squareSize = width / 8
+        val squareSize = getMaxSize() / 8
 
         if (isCornerJump(squares[from].row, squares[from].col,
                 squares[to].row, squares[to].col)) {
@@ -400,7 +414,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         }
 
         val duration = distance(fromRow, fromCol, toRow, toCol) * (1500 / 8)
-        val squareSize = width / 8
+        val squareSize = getMaxSize() / 8
 
         if (isCornerJump(fromRow, fromCol, toRow, toCol)) {
             val square2 = square
@@ -595,7 +609,16 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         super.onSizeChanged(newWidth, newHeight, oldWidth, oldHeight)
 
         checkerSquares.clear()
-        val squareSize = newWidth / 8f
+        var squareSize = 0f
+
+        val displayMetrics = Resources.getSystem().displayMetrics
+        val screenHeight = displayMetrics.heightPixels * .5
+
+        if (newWidth > screenHeight) {
+            squareSize = screenHeight.toFloat() / 8f
+        } else {
+            squareSize = newWidth / 8f
+        }
 
         for (col in 0 until 8) {
             for (row in 0 until 8) {
@@ -612,8 +635,8 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         // Draw the border
         val left = 0f
         val top = 0f
-        val right = width.toFloat()
-        val bottom = height.toFloat()
+        val right = getMaxSize().toFloat()
+        val bottom = getMaxSize().toFloat()
         canvas.drawRect(left, top, right, bottom, borderPaint)
     }
 
@@ -624,11 +647,11 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        super.onMeasure(widthMeasureSpec, widthMeasureSpec) // Make view square based on width
+        super.onMeasure(widthMeasureSpec, widthMeasureSpec)
     }
 
     private fun drawCheckerboard(canvas: Canvas) {
-        val squareSize = width / 8f // Assuming an 8x8 checkerboard
+        val squareSize = getMaxSize() / 8f // Assuming an 8x8 checkerboard
 
         for (col in 0 until 8) {
             for (row in 0 until 8) {
@@ -680,7 +703,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                     }
 
                     paint.style = Paint.Style.STROKE
-                    paint.strokeWidth = 10f // Adjust border width as needed
+                    paint.strokeWidth = 10f
                     canvas.drawRect(
                         checkerSquare.x,
                         checkerSquare.y,
@@ -807,7 +830,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         val toRow = if (isBlack) translateNumber(checker.row) else checker.row
 
         if (toRow == 7 && !checker.isKing && checker.isBlack) {
-            val squareSize = width / 8f
+            val squareSize = getMaxSize() / 8f
             val blackKing: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.king_black_checker)
             checker.bitmap.recycle()
             checker.bitmap = Bitmap.createScaledBitmap(
@@ -821,7 +844,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         }
 
         if (toRow == 0 && !checker.isKing && !checker.isBlack) {
-            val squareSize = width / 8f
+            val squareSize = getMaxSize() / 8f
             val whiteKing: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.king_white_checker)
             checker.bitmap.recycle()
             checker.bitmap = Bitmap.createScaledBitmap(
@@ -974,7 +997,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         checker: CheckersBitmapLocationInfo,
         entry: CheckersBitmapLocationInfo
     ): Boolean {
-        val size = (width / 8)
+        val size = (getMaxSize() / 8)
         return checker.x + size / 2 > entry.x &&
                 checker.x + size / 2 < (entry.x + size) &&
                 checker.y + size / 2 > entry.y &&

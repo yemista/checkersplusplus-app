@@ -3,10 +3,13 @@ package com.checkersplusplus.app
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
 import android.os.Bundle
 import android.util.Log
+import android.util.TypedValue
 import android.view.View
 import android.widget.Button
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -42,6 +45,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.io.IOException
+import java.lang.Integer.min
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
@@ -64,7 +68,36 @@ class GameActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_game)
+
+//        val scrollView = findViewById<ScrollView>(R.id.checkerBoardScrollView)
+//
+//        val displayMetrics = Resources.getSystem().displayMetrics
+//        val width = displayMetrics.widthPixels
+//        val height = displayMetrics.heightPixels
+//
+//        scrollView.isEnabled = false
+
+        val view = findViewById<View>(R.id.checkerBoardView) // Replace with your view ID
+
+        val displayMetrics = Resources.getSystem().displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val screenHeight = displayMetrics.heightPixels * .5
+
+        var minDimension = 0
+
+        if (screenWidth > displayMetrics.heightPixels) {
+            minDimension = min(screenWidth, screenHeight.toInt())
+        } else {
+            minDimension = screenWidth - TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 32.toFloat(), displayMetrics).toInt()
+        }
+
+        val layoutParams = view.layoutParams
+        layoutParams.width = minDimension
+        view.layoutParams = layoutParams
+        view.invalidate()
+
         setupActionListeners()
 
         webSocketClient = OkHttpClient.Builder()
