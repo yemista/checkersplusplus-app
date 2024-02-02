@@ -60,6 +60,7 @@ class GameActivity : AppCompatActivity() {
     private var connected: Boolean = false
     private lateinit var logicalBoard: Game
     private var mInterstitialAd: InterstitialAd? = null
+    private lateinit var opponentName: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -185,7 +186,6 @@ class GameActivity : AppCompatActivity() {
             // Setting the OK Button
             builder.setPositiveButton("Yes") { dialog, which ->
                 forfeitGame()
-                gameStarted = false
             }
 
             // Setting the Cancel Button

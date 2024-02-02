@@ -702,10 +702,14 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
             checkerSquares.forEach { square ->
                 if (x >= square.x && x <= square.x + square.size &&
                     y >= square.y && y <= square.y + square.size) {
-                    square.isSelected = true
-                    square.numClicks++
-                    invalidate()
-                    selectedSquares.add(square)
+
+                    if ((square.row + square.col) % 2 != 0) {
+                        square.isSelected = true
+                        square.numClicks++
+                        invalidate()
+                        selectedSquares.add(square)
+                    }
+
                     return true
                 }
             }
