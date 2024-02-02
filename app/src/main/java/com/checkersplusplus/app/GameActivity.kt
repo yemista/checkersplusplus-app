@@ -135,6 +135,10 @@ class GameActivity : AppCompatActivity() {
         val clearButton: Button = findViewById(R.id.clearButton)
 
         clearButton.setOnClickListener {
+            if (buttonPressed) {
+                return@setOnClickListener
+            }
+
             var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
             checkersBoard.clearSelected()
         }
@@ -153,12 +157,11 @@ class GameActivity : AppCompatActivity() {
                 CoroutineScope(Dispatchers.Main).launch {
                     checkersBoard.doMove()
                     setTurn(false)
-                    setTurn(false)
                     checkersBoard.invalidate()
                     checkersBoard.requestLayout()
+                    val result = async { sendMove() }
+                    result.await()
                     buttonPressed = false
-
-                    sendMove()
                 }
             } else {
                 runOnUiThread {
@@ -251,7 +254,7 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                showFailureDialog(reason + " " + code.toString())
+                showFailureDialog(reason + " " + code.toString(), true)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -259,7 +262,7 @@ class GameActivity : AppCompatActivity() {
                 connected = false
 
                 if (gameStarted) {
-                    t.message?.let { showFailureDialog(it) }
+                    t.message?.let { showFailureDialog(it, false) }
                 }
             }
 
@@ -714,7 +717,7 @@ class GameActivity : AppCompatActivity() {
         return moveList
     }
 
-    private fun sendMove() {
+    private suspend fun sendMove(): Boolean {
         val client = OkHttpClient.Builder()
             .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
             .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
@@ -732,35 +735,40 @@ class GameActivity : AppCompatActivity() {
             .post(body)
             .build()
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                showMessage("Connection error. Try again.")
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                if (response.isSuccessful) {
-                    currentMove++
-                    val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
-                    checkersBoard.setIsMyTurn(false)
-                } else {
-                    val responseBody = response.body?.string()
-
-                    if (responseBody == null) {
-                        showMessage("Invalid response from server. Try again soon")
-                        return
-                    }
-
-                    val game = ResponseUtil.parseJson(responseBody)
-
-                    showMessage(game["message"].toString())
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    showMessage("Connection error. Try again.")
+                    continuation.resume(false)
                 }
 
-                response.close()
-            }
-        })
+                override fun onResponse(call: Call, response: Response) {
+                    if (response.isSuccessful) {
+                        currentMove++
+                        val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+                        checkersBoard.setIsMyTurn(false)
+                    } else {
+                        val responseBody = response.body?.string()
+
+                        if (responseBody == null) {
+                            showMessage("Invalid response from server. Try again soon")
+                            return
+                        }
+
+                        val game = ResponseUtil.parseJson(responseBody)
+
+                        showMessage(game["message"].toString())
+                    }
+
+                    response.close()
+                    continuation.resume(true)
+                }
+            })
+        }
     }
 
-    private fun showFailureDialog(message: String) {
+    private fun showFailureDialog(message: String, shouldExit: Boolean) {
         runOnUiThread {
             gameStarted = false
 
@@ -781,7 +789,9 @@ class GameActivity : AppCompatActivity() {
 
             // Set a dismiss listener on the dialog
             dialog.setOnDismissListener {
-                restartApp()
+                if (shouldExit) {
+                    restartApp()
+                }
             }
 
             dialog.show()

@@ -1,95 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:padding="16dp"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
     <ScrollView
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent" >
+        android:layout_height="fill_parent">
+
         <LinearLayout
-            android:orientation="vertical"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
-    <!-- Logo at the top -->
-<!--    <ImageView-->
-<!--        android:id="@+id/logoImageView"-->
-<!--        android:layout_width="wrap_content"-->
-<!--        android:layout_height="wrap_content"-->
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <!-- Logo at the top -->
+            <!--    <ImageView-->
+            <!--        android:id="@+id/logoImageView"-->
+            <!--        android:layout_width="wrap_content"-->
+            <!--        android:layout_height="wrap_content"-->
 
-<!--        android:contentDescription="@string/logo"-->
-<!--        android:layout_gravity="center_horizontal"-->
-<!--        android:layout_marginTop="32dp"-->
-<!--        android:layout_marginBottom="32dp" />-->
-    <ImageView
-        android:id="@+id/imageViewLogo"
-        android:layout_width="wrap_content"
-        android:layout_height="150dp"
+            <!--        android:contentDescription="@string/logo"-->
+            <!--        android:layout_gravity="center_horizontal"-->
+            <!--        android:layout_marginTop="32dp"-->
+            <!--        android:layout_marginBottom="32dp" />-->
+            <ImageView
+                android:id="@+id/imageViewLogo"
+                android:layout_width="wrap_content"
+                android:layout_height="150dp"
 
-        android:src="@drawable/logo2" />
+                android:src="@drawable/logo2" />
 
-    <!-- Username input field -->
-    <EditText
-        android:id="@+id/usernameEditText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/username"
-        android:inputType="textPersonName"
-        android:maxLines="1"/>
+            <!-- Username input field -->
+            <EditText
+                android:id="@+id/usernameEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/username"
+                android:inputType="textPersonName"
+                android:maxLines="1" />
 
-    <!-- Password input field -->
-    <EditText
-        android:id="@+id/passwordEditText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/password"
-        android:inputType="textPassword"
-        android:maxLines="1"
-        android:layout_marginTop="8dp"/>
+            <!-- Password input field -->
+            <EditText
+                android:id="@+id/passwordEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/password"
+                android:inputType="textPassword"
+                android:maxLines="1" />
 
-    <CheckBox
-        android:id="@+id/checkboxSaveUsername"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Save login information" />
+            <CheckBox
+                android:id="@+id/checkboxSaveUsername"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Save login information" />
 
 
-    <!-- Login Button -->
-    <Button
-        android:id="@+id/loginButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/login"
-        android:layout_marginTop="16dp"/>
+            <!-- Login Button -->
+            <Button
+                android:id="@+id/loginButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/login" />
 
-    <Button
-        android:id="@+id/leaderboard"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/leaderboard"
-        android:layout_marginTop="16dp"/>
+            <Button
+                android:id="@+id/leaderboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/leaderboard" />
 
-    <!-- Create Account Button -->
-    <Button
-        android:id="@+id/createAccountButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/create_account"
-        android:layout_marginTop="8dp"/>
+            <!-- Create Account Button -->
+            <Button
+                android:id="@+id/createAccountButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/create_account" />
 
-    <Button
-        android:id="@+id/verifyAccountButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/verify_account"
-        android:layout_marginTop="8dp"/>
+            <Button
+                android:id="@+id/verifyAccountButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/verify_account" />
 
-    <Button
-        android:id="@+id/resetPasswordButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/reset_password"
-        android:layout_marginTop="8dp"/>
+            <Button
+                android:id="@+id/resetPasswordButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/reset_password" />
+
+            <Button
+                android:id="@+id/emailButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Contact Support" />
+
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

@@ -9,14 +9,23 @@ import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONObject
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class CreateAccountActivity : AppCompatActivity() {
 
@@ -39,11 +48,7 @@ class CreateAccountActivity : AppCompatActivity() {
         val createAccountButton: Button = findViewById(R.id.createAccountButton)
 
         createAccountButton.setOnClickListener {
-            if (buttonPressed) {
-                return@setOnClickListener
-            }
 
-            buttonPressed = true
             val email = emailEditText.text.toString()
             val username = usernameEditText.text.toString()
             val password = passwordEditText.text.toString()
@@ -69,35 +74,31 @@ class CreateAccountActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Asynchronously make the POST request
-            CoroutineScope(Dispatchers.IO).launch {
+            val networkScope = CoroutineScope(Dispatchers.IO)
+            networkScope.launch {
                 try {
-                    val responseBody = makePostRequest(email, username, password, confirmPassword)
+                    val responseBody = async { makePostRequest(email, username, password, confirmPassword) }
+                    responseBody.await()
+                    val response = responseBody.getCompleted()
 
-                    withContext(Dispatchers.Main) {
-                        if (responseBody == null || responseBody == "") {
-                            showMessage("No response from server. Try again soon")
-                        }
-
-                        val createAccountResponse = ResponseUtil.parseJson(responseBody)
-
-                        if (createAccountResponse == null) {
-                            showMessage("Invalid response from server. Try again soon")
-                        }
-
-                        val message = createAccountResponse["message"]
-
-                        if (message != null) {
-                            showResponseDialog(message)
-                        }
+                    if (response == null || response == "") {
+                        showMessage("No response from server. Try again soon")
                     }
 
-                    buttonPressed = false
+                    val createAccountResponse = ResponseUtil.parseJson(response)
+
+                    if (createAccountResponse == null) {
+                        showMessage("Invalid response from server. Try again soon")
+                    }
+
+                    val message = createAccountResponse["message"]
+
+                    if (message != null) {
+                        showResponseDialog(message)
+                    }
+                } catch (e: CancellationException) {
+                    // Ignore cancellation
                 } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        showMessage(e.toString())
-                        buttonPressed = false
-                    }
                 }
             }
         }
@@ -117,9 +118,19 @@ class CreateAccountActivity : AppCompatActivity() {
             .url("https://" + BuildConfig.BASE_URL + "/account/create")
             .post(requestBody)
             .build()
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    showMessage("Connection error. Please try again")
+                    continuation.resumeWithException(e)
+                }
 
-        client.newCall(request).execute().use { response ->
-            return response.body?.string() ?: ""
+                override fun onResponse(call: Call, response: Response) {
+                    val responseBody = response.body?.string() ?: ""
+                    continuation.resume(responseBody)
+                }
+            })
         }
     }
 

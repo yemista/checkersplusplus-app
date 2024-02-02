@@ -229,16 +229,22 @@ class OpenGamesActivity : AppCompatActivity() {
             "sortDirection=asc&"
         }
 
-        val editTextLowestRating: EditText = findViewById(R.id.editTextLowestRating)
+        val editTextUsername: EditText = findViewById(R.id.editTextUsername)
 
-        if (editTextLowestRating.text != null && editTextLowestRating.text.length > 0) {
-            openGamesUrl += "ratingLow=" + editTextLowestRating.text + "&"
-        }
+        if (editTextUsername.text.isNotEmpty()) {
+            openGamesUrl += "username=" + editTextUsername.text + "&"
+        } else {
+            val editTextLowestRating: EditText = findViewById(R.id.editTextLowestRating)
 
-        val editTextHighestRating: EditText = findViewById(R.id.editTextHighestRating)
+            if (editTextLowestRating.text != null && editTextLowestRating.text.length > 0) {
+                openGamesUrl += "ratingLow=" + editTextLowestRating.text + "&"
+            }
 
-        if (editTextHighestRating.text != null && editTextHighestRating.text.length > 0) {
-            openGamesUrl += "ratingHigh=" + editTextHighestRating.text + "&"
+            val editTextHighestRating: EditText = findViewById(R.id.editTextHighestRating)
+
+            if (editTextHighestRating.text != null && editTextHighestRating.text.length > 0) {
+                openGamesUrl += "ratingHigh=" + editTextHighestRating.text + "&"
+            }
         }
 
         val editTextNumberOfGames: EditText = findViewById(R.id.editTextNumberOfGames)

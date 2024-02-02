@@ -62,7 +62,8 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
     fun clearSelected() {
         selectedSquares.forEach { square ->
-                square.isSelected = false
+            square.isSelected = false
+            square.numClicks = 0
         }
         invalidate()
         selectedSquares.clear()
@@ -354,6 +355,10 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
             return
         }
 
+        if (selectedSquares.isEmpty()) {
+            return
+        }
+
         var entry: CheckersBitmapLocationInfo? = null
         val fromRow = selectedSquares[from].row
         val fromCol = selectedSquares[from].col
@@ -508,11 +513,13 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                     val positionRow = if (isBlack) translateNumber(j) else j
                     val positionCol = if (!isBlack) translateNumber(i) else i
 
-                    if (entry.col == positionCol && entry.row == positionRow && piece == null) {
-                        val temp: CheckersBitmapLocationInfo = entry
-                        iterator.remove()
-                        removedBitmapInfo.add(temp)
-                        break
+                    if (entry.col == positionCol && entry.row == positionRow) {
+                        if (piece == null) {
+                            val temp: CheckersBitmapLocationInfo = entry
+                            iterator.remove()
+                            removedBitmapInfo.add(temp)
+                            break
+                        }
                     }
                 }
             }
@@ -660,7 +667,18 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 val checkerSquare = checkerSquares[row * 8 + col]
 
                 if (checkerSquare.isSelected) {
-                    paint.color = Color.YELLOW
+                    if (checkerSquare.numClicks == 1) {
+                        paint.color = Color.YELLOW
+                    }
+
+                    if (checkerSquare.numClicks == 2) {
+                        paint.color = ContextCompat.getColor(context, android.R.color.holo_orange_dark)
+                    }
+
+                    if (checkerSquare.numClicks >= 3) {
+                        paint.color = Color.RED
+                    }
+
                     paint.style = Paint.Style.STROKE
                     paint.strokeWidth = 10f // Adjust border width as needed
                     canvas.drawRect(
@@ -685,6 +703,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 if (x >= square.x && x <= square.x + square.size &&
                     y >= square.y && y <= square.y + square.size) {
                     square.isSelected = true
+                    square.numClicks++
                     invalidate()
                     selectedSquares.add(square)
                     return true

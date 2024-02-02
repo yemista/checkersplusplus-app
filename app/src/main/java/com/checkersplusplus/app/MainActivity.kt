@@ -72,6 +72,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        val emailButton = findViewById<Button>(R.id.emailButton)
+        emailButton.setOnClickListener {
+            sendEmail()
+        }
         createAccountButton.setOnClickListener {
             val intent = Intent(this, CreateAccountActivity::class.java)
             startActivity(intent)
@@ -140,6 +144,27 @@ class MainActivity : AppCompatActivity() {
 
         verifyVersion()
     }
+
+    private fun sendEmail() {
+        val recipient = "admin@checkersplusplus.com"
+        val subject = "Checkers++ Support Question"
+        val body = "Please enter your question below"
+
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("mailto:") // Only email apps should handle this
+            putExtra(Intent.EXTRA_EMAIL, arrayOf(recipient))
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, body)
+        }
+
+        // Verify that the intent will resolve to an activity
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+        } else {
+            showMessage("Please send us an email at admin@checkersplusplus.com. We are more than happy to help!", null)
+        }
+    }
+
 
     private fun saveLoginInformation(username: String?, password: String?) {
         val sharedPreferences = getSharedPreferences("CheckersPlusPlusAppPrefs", Context.MODE_PRIVATE)
