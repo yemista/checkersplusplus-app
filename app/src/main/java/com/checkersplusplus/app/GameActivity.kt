@@ -254,7 +254,7 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                showFailureDialog(reason + " " + code.toString(), true)
+                //showFailureDialog(reason + " " + code.toString(), true)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -421,9 +421,6 @@ class GameActivity : AppCompatActivity() {
                 // Code to run on the main thread, like updating the UI
             }
         }
-
-        // Ensure the client dispatcher is properly shut down on app exit
-        webSocketClient.dispatcher.executorService.shutdown()
     }
 
     private suspend fun acknowledgeGameEvent(eventId: String): Boolean {
@@ -803,6 +800,10 @@ class GameActivity : AppCompatActivity() {
 
     private fun showEndGameDialog(message: String) {
         runOnUiThread {
+            if (!gameStarted) {
+                return@runOnUiThread
+            }
+
             gameStarted = false
 
             // Create an AlertDialog builder
@@ -866,6 +867,9 @@ class GameActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        webSocket.close(1000, "")
+        // Ensure the client dispatcher is properly shut down on app exit
+        webSocketClient.dispatcher.executorService.shutdown()
         var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
         checkersBoard.releaseResources()
     }
