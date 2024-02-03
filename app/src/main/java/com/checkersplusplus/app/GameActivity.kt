@@ -299,7 +299,7 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onMessage(webSocket: WebSocket, message: String) {
-                Log.e("MSG", message)
+                //Log.e("MSG", message)
 
                 if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
