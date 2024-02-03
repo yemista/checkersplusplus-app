@@ -24,14 +24,18 @@ object StorageUtil {
 
 object ResponseUtil {
     fun parseJson(content: String): Map<String, String> {
-        val jsonObject = JSONObject(content)
-        val map = mutableMapOf<String, String>()
+        try {
+            val jsonObject = JSONObject(content)
+            val map = mutableMapOf<String, String>()
 
-        jsonObject.keys().forEach {
-            map[it] = jsonObject.getString(it)
+            jsonObject.keys().forEach {
+                map[it] = jsonObject.getString(it)
+            }
+
+            return map
+        } catch (e: Exception) {
+            return mutableMapOf<String, String>()
         }
-
-        return map
     }
 
     fun parseJsonArray(content: String): JSONArray {

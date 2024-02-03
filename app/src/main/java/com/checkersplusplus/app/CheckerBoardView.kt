@@ -652,6 +652,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
 
     private fun drawCheckerboard(canvas: Canvas) {
         val squareSize = getMaxSize() / 8f // Assuming an 8x8 checkerboard
+        val dark_color = Color.parseColor("#ff606060")
 
         for (col in 0 until 8) {
             for (row in 0 until 8) {
@@ -668,7 +669,7 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
                 if ((row + col) % 2 == remainder) {
                     paint.color = ContextCompat.getColor(context, R.color.tan)
                 } else {
-                    paint.color = Color.DKGRAY
+                    paint.color = dark_color
                 }
 
                 if (square == null) {

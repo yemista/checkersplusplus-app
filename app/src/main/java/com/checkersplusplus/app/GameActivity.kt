@@ -64,20 +64,12 @@ class GameActivity : AppCompatActivity() {
     private var connected: Boolean = false
     private lateinit var logicalBoard: Game
     private var mInterstitialAd: InterstitialAd? = null
-    private lateinit var opponentName: String
+    private var opponentName: String = "Opponent"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_game)
-
-//        val scrollView = findViewById<ScrollView>(R.id.checkerBoardScrollView)
-//
-//        val displayMetrics = Resources.getSystem().displayMetrics
-//        val width = displayMetrics.widthPixels
-//        val height = displayMetrics.heightPixels
-//
-//        scrollView.isEnabled = false
 
         val view = findViewById<View>(R.id.checkerBoardView) // Replace with your view ID
 
@@ -116,15 +108,21 @@ class GameActivity : AppCompatActivity() {
                 try {
                     val deferred = async { lookupGame(gameId) }
                     deferred.await()
-                    val deferredServerIp = async { lookupWebSocketServer() }
-                    deferredServerIp.await()
-                    startWebSocket(deferredServerIp.getCompleted())
+
+                    if (deferred.getCompleted()) {
+                        val deferredServerIp = async { lookupWebSocketServer() }
+                        deferredServerIp.await()
+                        startWebSocket(deferredServerIp.getCompleted())
+                    } else {
+
+                    }
                 } catch (e: CancellationException) {
                     // Ignore cancellation
                 } catch (e: Exception) {
                     finish()
                 }
             }
+            lookupOpponentName(gameId)
         }
 
         MobileAds.initialize(this) {
@@ -189,13 +187,16 @@ class GameActivity : AppCompatActivity() {
 
             if (checkersBoard.shouldDoMove()) {
                 CoroutineScope(Dispatchers.Main).launch {
-                    checkersBoard.doMove()
-                    setTurn(false)
-                    checkersBoard.invalidate()
-                    checkersBoard.requestLayout()
                     val result = async { sendMove() }
                     result.await()
                     buttonPressed = false
+
+                    if (result.getCompleted()) {
+                        checkersBoard.doMove()
+                        setTurn(false)
+                        checkersBoard.invalidate()
+                        checkersBoard.requestLayout()
+                    }
                 }
             } else {
                 runOnUiThread {
@@ -283,24 +284,22 @@ class GameActivity : AppCompatActivity() {
         val request = Request.Builder().url("wss://" + serverIp + ":8080/checkersplusplus/api/updates").build()
         val listener = object : WebSocketListener() {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                webSocket.close(1000, null)
+                //showFailureDialog("CLOSING" + reason + " " + code.toString(), false)
+                //webSocket.close(1000, null)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                //showFailureDialog(reason + " " + code.toString(), true)
+                //showFailureDialog("CLOSED" + reason + " " + code.toString(), false)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                webSocket.close(1000, null)
-                connected = false
-
-                if (gameStarted) {
-                    t.message?.let { showFailureDialog(it, false) }
-                }
+                showFailureDialog("WEBSOCKET_FAILUIRE", false)
+//                webSocket.close(1000, null)
+//                connected = false
             }
 
             override fun onMessage(webSocket: WebSocket, message: String) {
-                //Log.e("MSG", message)
+                Log.e("MSG", message)
 
                 if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
@@ -330,7 +329,7 @@ class GameActivity : AppCompatActivity() {
                         deferred.await()
 
                         if (deferred.getCompleted()) {
-                            showEndGameDialog("Opponent timed out. You win.")
+                            showEndGameDialog(opponentName + " timed out. You win.")
                         }
                     }
                 } else if (message.startsWith("FORFEIT")) {
@@ -341,7 +340,7 @@ class GameActivity : AppCompatActivity() {
 
                         if (deferred.getCompleted()) {
                             showEndGameDialog(
-                                "Opponent forfeits. You win. Your new rating is " + message.split(
+                                opponentName + " forfeits. You win. Your new rating is " + message.split(
                                     '|'
                                 )[1]
                             )
@@ -354,35 +353,44 @@ class GameActivity : AppCompatActivity() {
                         deferred.await()
 
                         if (deferred.getCompleted()) {
-                            showEndGameDialog(
-                                "You win. Your new rating is " + message.split(
-                                    '|'
-                                )[1]
-                            )
+                            val parts = message.split('|')
+                            val newRating = parts[1]
+                            showEndGameDialog("You win. Your new rating is " + newRating.toString())
                         }
                     }
                 } else if (message.startsWith("LOSE")) {
                     val parts = message.split('|')
                     CoroutineScope(Dispatchers.Main).launch {
-                        val deferred = async { acknowledgeGameEvent(parts[2]) }
+                        val deferred = async { acknowledgeGameEvent(parts[4]) }
                         deferred.await()
 
                         if (deferred.getCompleted()) {
-                            showEndGameDialog(
-                                "You lose. Your new rating is " + message.split(
-                                    '|'
-                                )[1]
-                            )
+                            val parts = message.split('|')
+                            val newRating = parts[1]
+                            val moveNum = parts[2]
+                            val finalMove = parts[3]
+                            processMoveFromServer(moveNum, finalMove) {
+                                showEndGameDialog("You lose. Your new rating is " + newRating)
+                            }
                         }
                     }
                 } else if (message.startsWith("DRAW")) {
-                    val parts = message.split('|')
                     CoroutineScope(Dispatchers.Main).launch {
-                        val deferred = async { acknowledgeGameEvent(parts[1]) }
+                        val parts = message.split('|')
+                        val eventId = if (parts.size == 4) parts[3] else parts[1]
+                        val deferred = async { acknowledgeGameEvent(eventId) }
                         deferred.await()
 
                         if (deferred.getCompleted()) {
-                            showEndGameDialog("Draw.")
+                            if (parts.size == 2) {
+                                showEndGameDialog("Draw.")
+                            } else {
+                                val moveNum = parts[1]
+                                val finalMove = parts[2]
+                                processMoveFromServer(moveNum, finalMove) {
+                                    showEndGameDialog("Draw.")
+                                }
+                            }
                         }
                     }
                 } else if (message.startsWith("BEGIN")) {
@@ -419,12 +427,17 @@ class GameActivity : AppCompatActivity() {
                                 if (playersTurn) {
                                     status.text = "Your turn"
                                 } else {
-                                    status.text = "Opponents turn"
+                                    status.text = opponentName + "'s turn"
                                 }
 
                                 status.invalidate()
                             }
                         }
+                    }
+                    val gameId = intent.getStringExtra("gameId")
+
+                    if (gameId != null) {
+                        lookupOpponentName(gameId)
                     }
                 }
             }
@@ -484,7 +497,8 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
-    private fun processMoveFromServer(moveNum: String, moveList: String) {
+    private fun processMoveFromServer(moveNum: String, moveList: String,
+                                      callback: (() -> Unit)? = null) {
         val num = moveNum.toIntOrNull()
 
         if (num == null) {
@@ -552,8 +566,12 @@ class GameActivity : AppCompatActivity() {
             }
         }
 
-        checkersBoard.doServerMove(squares, isKing!!) {
-            setTurn(true)
+        if (callback == null) {
+            checkersBoard.doServerMove(squares, isKing!!) {
+                setTurn(true)
+            }
+        } else {
+            checkersBoard.doServerMove(squares, isKing!!, callback)
         }
     }
 
@@ -579,7 +597,7 @@ class GameActivity : AppCompatActivity() {
         if (myTurn) {
             status.text = "Your turn"
         } else {
-            status.text = "Opponents turn"
+            status.text = opponentName + "'s turn"
         }
     }
 
@@ -588,7 +606,45 @@ class GameActivity : AppCompatActivity() {
         return pieces[1].toIntOrNull()!!
     }
 
-    private suspend fun lookupGame(gameId: String): String {
+    private fun lookupOpponentName(gameId: String) {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
+        val request = Request.Builder()
+            .url("https://" + BuildConfig.BASE_URL + "/game/" + gameId)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                val accountId = StorageUtil.getData("accountId")
+
+                if (responseBody != null && response.isSuccessful) {
+                    val game = ResponseUtil.parseJson(responseBody)
+
+                    if (game["blackAccountId"] == accountId) {
+                        if (game["redUsername"] != null) {
+                            opponentName = game["redUsername"].toString()
+                        }
+                    }
+
+                    if (game["redAccountId"] == accountId) {
+                        if (game["blackUsername"] != null) {
+                            opponentName = game["blackUsername"].toString()
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    private suspend fun lookupGame(gameId: String): Boolean {
         val client = OkHttpClient.Builder()
             .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
             .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
@@ -617,13 +673,12 @@ class GameActivity : AppCompatActivity() {
 
                     if (response.code == 404 /*NOT_FOUND*/) {
                         showMessage("The game you were looking for no longer exists")
-
                         finish()
                     }
 
                     val game = ResponseUtil.parseJson(responseBody)
 
-                    if (game == null) {
+                    if (game == null || game.isEmpty()) {
                         showMessage("Invalid response from server. Try again soon")
                         finish()
                     }
@@ -660,7 +715,7 @@ class GameActivity : AppCompatActivity() {
                                 if (playersTurn) {
                                     status.text = "Your turn"
                                 } else {
-                                    status.text = "Opponents turn"
+                                    status.text = opponentName + "'s turn"
                                 }
 
                                 val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
@@ -668,7 +723,7 @@ class GameActivity : AppCompatActivity() {
                             }
                         }
                         response.close()
-                        continuation.resume("")
+                        continuation.resume(true)
                     }
                 }
             })
@@ -784,12 +839,14 @@ class GameActivity : AppCompatActivity() {
 
                         if (responseBody == null) {
                             showMessage("Invalid response from server. Try again soon")
+                            continuation.resume(false)
                             return
                         }
 
                         val game = ResponseUtil.parseJson(responseBody)
 
                         showMessage(game["message"].toString())
+                        continuation.resume(false)
                     }
 
                     response.close()
@@ -885,11 +942,7 @@ class GameActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (!gameStarted) {
-            super.onBackPressed()
-        } else {
 
-        }
     }
 
     private fun restartApp() {

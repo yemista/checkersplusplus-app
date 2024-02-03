@@ -1,5 +1,6 @@
 package com.checkersplusplus.app
 
+import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -32,6 +33,13 @@ class OpenGameListAdapter(private val list: List<OpenGameListItem>, private val 
         val item = list[position]
         holder.blackIdTextView.text = item.blackId ?: "open"
         holder.redIdTextView.text = item.redId ?: "open"
+
+        if (holder.blackIdTextView.text == "open") {
+            holder.redIdTextView.setTypeface(null, Typeface.BOLD)
+        } else {
+            holder.blackIdTextView.setTypeface(null, Typeface.BOLD)
+        }
+
         holder.joinButton.setOnClickListener { onJoinClicked(item.gameId) }
         val context = holder.itemView.context
         if (position % 2 == 0) {

@@ -6,12 +6,16 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
+import android.text.method.LinkMovementMethod
 import android.util.Log
+import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.text.HtmlCompat
 import androidx.lifecycle.Lifecycle
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
@@ -88,6 +92,12 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, RequestVerificationActivity::class.java)
             startActivity(intent)
         }
+        val textViewLink = findViewById<TextView>(R.id.forgotUsernameLink)
+
+        textViewLink.setOnClickListener {
+            showUsernameDialog()
+        }
+
         val leaderboardButton: Button = findViewById(R.id.leaderboard)
         leaderboardButton.setOnClickListener {
             try {
@@ -119,7 +129,7 @@ class MainActivity : AppCompatActivity() {
             if (isChecked) {
                 val builder = AlertDialog.Builder(this)
                 builder.setTitle("Save login information")
-                builder.setMessage("By checking this box your username and password will be saved to the device. Do not check this box if you have any concerns about your passwords safety.")
+                builder.setMessage("Do not check this box if this is a shared device.")
 
                 // Setting the OK Button
                 builder.setPositiveButton("Yes") { dialog, which ->
@@ -142,7 +152,72 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        val tutorial = sharedPreferences.getString("tutorial", null)
+
+        if (tutorial == null) {
+            runOnUiThread {
+                // Create an AlertDialog builder
+                val builder = AlertDialog.Builder(this)
+
+                val htmlFormattedText = HtmlCompat.fromHtml(
+                    "Don't know the rules? Checkers++ is different from traditional checkers. " +
+                            "We highly recommend you visit our website to learn about the different rules. <br/><a href='https://www.checkersplusplus.com'>www.checkersplusplus.com</a>",
+                    HtmlCompat.FROM_HTML_MODE_LEGACY
+                )
+
+                // Set the message to show in the dialog
+                builder.setMessage(htmlFormattedText)
+
+                // Add a button to close the dialog
+                builder.setNegativeButton("Close") { dialog, _ ->
+                    // User clicked the "Close" button, so dismiss the dialog
+                    dialog.dismiss()
+                }
+
+                builder.setPositiveButton("Dont show again") { dialog, _ ->
+                    sharedPreferences.edit().putString("tutorial", "tutorial").apply()
+                    dialog.dismiss()
+                }
+
+                // Create and show the AlertDialog
+                val dialog = builder.create()
+
+                // Set a dismiss listener on the dialog
+                dialog.setOnDismissListener {
+                    if (intent != null) {
+                        startActivity(intent)
+                    }
+                }
+
+                // Optionally, prevent the dialog from being canceled when touched outside
+                dialog.setCanceledOnTouchOutside(false)
+                dialog.show()
+                (dialog.findViewById(android.R.id.message) as? TextView)?.movementMethod =  LinkMovementMethod.getInstance()
+            }
+        }
+
         verifyVersion()
+    }
+
+    private fun showUsernameDialog() {
+        // Inflate the custom layout
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_username, null)
+        val editTextDialog = dialogView.findViewById<EditText>(R.id.emailAddress)
+
+        // Create the AlertDialog
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Request username")
+            .setView(dialogView)
+            .setPositiveButton("Submit") { dialog, which ->
+                // Handle the OK button click event
+                val userInput = editTextDialog.text.toString()
+                resendUsername(userInput)
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        // Show the dialog
+        dialog.show()
     }
 
     private fun sendEmail() {
@@ -213,6 +288,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun resendUsername(email: String) {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
+        val request = Request.Builder()
+            .url("https://" + BuildConfig.BASE_URL + "/account/username?email=" + email)
+            .get()
+            .build()
+
+        // Make asynchronous network call
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+
+                showResponseDialog("Bad network connection. Try restarting the app.", false)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    showResponseDialog("Failed to communicate with the server. Please try again later", false)
+                } else {
+                    showResponseDialog("We sent you the username associated with that email address. Please check your spam folder if you did not receive it.", false)
+                }
+            }
+        })
+    }
+
     private fun verifyVersion() {
        val client = OkHttpClient.Builder()
            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
@@ -228,20 +331,22 @@ class MainActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
-                showResponseDialog("Bad network connection. Try restarting the app.", true)
+                showResponseDialog("Could not reach the server. Please check your internet connection.", true)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     showResponseDialog("Failed to get version from the server. Please try again later", true)
+                } else {
+                    val responseBody = response.body?.string()
+
+                    if (responseBody != BuildConfig.APP_VERSION) {
+                        showResponseDialog(
+                            "You are running an old version. Please update the app from the playstore.",
+                            true
+                        )
+                    }
                 }
-
-                val responseBody = response.body?.string()
-
-                if (responseBody != BuildConfig.APP_VERSION) {
-                    showResponseDialog("You are running an old version. Please update the app from the playstore.", true)
-                }
-
             }
         })
     }
@@ -255,9 +360,11 @@ class MainActivity : AppCompatActivity() {
             return ""
         }
 
+        val trimmedUsername = username.trim()
+
         // Prepare JSON body
         val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-        val jsonBody = "{\"username\":\"$username\",\"password\":\"$password\"}"
+        val jsonBody = "{\"username\":\"$trimmedUsername\",\"password\":\"$password\"}"
 
         // Create request
         val client = OkHttpClient.Builder()
