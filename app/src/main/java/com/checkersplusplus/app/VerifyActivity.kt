@@ -25,7 +25,13 @@ class VerifyActivity : AppCompatActivity() {
         setContentView(R.layout.activity_verify)
 
         verificationCodeEditText = findViewById(R.id.verificationCodeEditText)
-        usernameEditText = findViewById(R.id.usernameEditText)
+        usernameEditText = findViewById<EditText>(R.id.usernameEditText)
+        val username = intent.getStringExtra("username")
+
+        if (username != null) {
+            usernameEditText.setText(username)
+        }
+
         val sendButton: Button = findViewById(R.id.sendVerificationCodeButton)
         val resendButton: Button = findViewById(R.id.resendVerificationCodeButton)
 
@@ -88,12 +94,10 @@ class VerifyActivity : AppCompatActivity() {
 
                     val message = createAccountResponse["message"]
 
-                    if (message != null) {
-                        showMessage(message.toString(), false)
-                    }
-
                     if (response.isSuccessful) {
                         showMessage(message.toString(), true)
+                    } else if (message != null) {
+                        showMessage(message.toString(), false)
                     }
 
                     buttonPressed = false

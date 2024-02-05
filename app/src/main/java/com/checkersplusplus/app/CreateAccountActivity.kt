@@ -169,6 +169,9 @@ class CreateAccountActivity : AppCompatActivity() {
                 if (message.startsWith("Account created successfully")) {
                     val intent =
                         Intent(this@CreateAccountActivity, VerifyActivity::class.java)
+                    val usernameEditText: EditText = findViewById(R.id.usernameEditText)
+                    val username = usernameEditText.text.toString()
+                    intent.putExtra("username", username)
                     startActivity(intent)
                 }
             }
