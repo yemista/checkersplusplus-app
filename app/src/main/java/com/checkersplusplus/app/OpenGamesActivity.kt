@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.Spanned
+import android.text.method.LinkMovementMethod
 import android.util.Log
 import android.view.View
 import android.widget.ArrayAdapter
@@ -16,6 +17,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.text.HtmlCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import okhttp3.Call
@@ -73,6 +75,88 @@ class OpenGamesActivity : AppCompatActivity() {
         findViewById<EditText>(R.id.editTextLowestRating).filters = arrayOf(InputFilterMinMax(0, 10000))
         findViewById<EditText>(R.id.editTextHighestRating).filters = arrayOf(InputFilterMinMax(0, 10000))
         fetchDataFromServer()
+
+        val tutorial = StorageUtil.getData("tutorial")
+
+        //Log.e("TUTORIAL", tutorial)
+        if (tutorial == "true") {
+            runOnUiThread {
+                // Create an AlertDialog builder
+                val builder = AlertDialog.Builder(this)
+
+                val htmlFormattedText = HtmlCompat.fromHtml(
+                    "Don't know the rules? Checkers++ is different from traditional checkers. " +
+                            "We highly recommend you visit our website to learn about the different rules. <br/><a href='https://www.checkersplusplus.com'>www.checkersplusplus.com</a>",
+                    HtmlCompat.FROM_HTML_MODE_LEGACY
+                )
+
+                // Set the message to show in the dialog
+                builder.setMessage(htmlFormattedText)
+
+                // Add a button to close the dialog
+                builder.setNegativeButton("Close") { dialog, _ ->
+                    // User clicked the "Close" button, so dismiss the dialog
+                    StorageUtil.saveData("tutorial", "false")
+                    dialog.dismiss()
+                }
+
+                builder.setPositiveButton("Dont show again") { dialog, _ ->
+                    updateTutorialSettings();
+                    StorageUtil.saveData("tutorial", "false")
+                    dialog.dismiss()
+                }
+
+                // Create and show the AlertDialog
+                val dialog = builder.create()
+
+
+                // Optionally, prevent the dialog from being canceled when touched outside
+                dialog.setCanceledOnTouchOutside(false)
+                dialog.show()
+                (dialog.findViewById(android.R.id.message) as? TextView)?.movementMethod =  LinkMovementMethod.getInstance()
+            }
+        }
+    }
+
+    private fun updateTutorialSettings() {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
+        val accountId = StorageUtil.getData("accountId")
+        val request = Request.Builder()
+            .url("https://" + BuildConfig.BASE_URL + "/account/tutorial/" + accountId)
+            .build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    Toast.makeText(
+                        applicationContext,
+                        "Failed to update settings.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                runOnUiThread {
+                    if (response.isSuccessful) {
+                        Toast.makeText(
+                            applicationContext,
+                            "Updated settings.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            applicationContext,
+                            "Failed to update settings.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+        })
     }
 
     private fun setupSpinner(spinner: Spinner, items: Array<String>) {
@@ -169,7 +253,7 @@ class OpenGamesActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                showMessage("Network error. Failed to connect: ${e.message}")
+                showMessage("Network error. Failed to connect. Try again later.")
             }
 
             override fun onResponse(call: Call, response: Response) {

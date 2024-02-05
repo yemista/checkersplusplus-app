@@ -67,7 +67,7 @@ class VerifyActivity : AppCompatActivity() {
             client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     // Handle failed network request
-                    showMessage("Network error. Failed to connect: ${e.message}", false)
+                    showMessage("Network error. Failed to connect. Try again soon.", false)
                     buttonPressed = false
                 }
 
@@ -126,7 +126,7 @@ class VerifyActivity : AppCompatActivity() {
 
             client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    showMessage("Network error. Failed to connect: ${e.message}", false)
+                    showMessage("Network error. Failed to connect. Try again soon.", false)
                 }
 
                 override fun onResponse(call: Call, response: Response) {

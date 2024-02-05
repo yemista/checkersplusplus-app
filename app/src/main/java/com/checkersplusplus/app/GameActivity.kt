@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.util.Log
 import android.util.TypedValue
 import android.view.View
@@ -65,6 +66,10 @@ class GameActivity : AppCompatActivity() {
     private lateinit var logicalBoard: Game
     private var mInterstitialAd: InterstitialAd? = null
     private var opponentName: String = "Opponent"
+    private val threeMinutesInMillis: Long = 3 * 60 * 1000
+    private val countDownInterval: Long = 1000
+
+    var countDownTimer: CountDownTimer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -192,6 +197,9 @@ class GameActivity : AppCompatActivity() {
                     buttonPressed = false
 
                     if (result.getCompleted()) {
+                        countDownTimer?.cancel()
+                        val status: TextView = findViewById(R.id.timeLeftText)
+                        status.text = ""
                         checkersBoard.doMove()
                         setTurn(false)
                         checkersBoard.invalidate()
@@ -257,7 +265,7 @@ class GameActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                showMessage("Network error. Failed to connect: ${e.message}")
+                showMessage("Network error. Please try again.")
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -279,6 +287,31 @@ class GameActivity : AppCompatActivity() {
         })
     }
 
+    private fun startTimer() {
+        countDownTimer = object : CountDownTimer(threeMinutesInMillis, countDownInterval) {
+            override fun onTick(millisUntilFinished: Long) {
+                val status: TextView = findViewById(R.id.timeLeftText)
+
+                // Update UI every second
+                val timeLeft = millisUntilFinished / 1000 // Convert to seconds
+                val minutes = (timeLeft.toInt() / 60).toInt()
+                val seconds = timeLeft - (minutes * 60)
+
+                if (seconds < 10) {
+                    status.text = minutes.toString() + ":0" + seconds
+                } else {
+                    status.text = minutes.toString() + ":" + seconds
+                }
+            }
+
+            override fun onFinish() {
+                val status: TextView = findViewById(R.id.timeLeftText)
+                status.text = ""
+            }
+        }
+        countDownTimer?.start()
+    }
+
     private fun startWebSocket(serverIp: String) {
 
         val request = Request.Builder().url("wss://" + serverIp + ":8080/checkersplusplus/api/updates").build()
@@ -289,7 +322,7 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                //showFailureDialog("CLOSED" + reason + " " + code.toString(), false)
+                //restartApp()
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -314,22 +347,22 @@ class GameActivity : AppCompatActivity() {
                 } else if (message.startsWith("TIMEOUT_LOSS")) {
                     val parts = message.split('|')
                     CoroutineScope(Dispatchers.Main).launch {
-                        val deferred = async { acknowledgeGameEvent(parts[1]) }
+                        val deferred = async { acknowledgeGameEvent(parts[2]) }
                         deferred.await()
 
                         if (deferred.getCompleted()) {
-                            showEndGameDialog("You timed out. You lose.")
+                            showEndGameDialog("You timed out. You lose. Your new rating is " + parts[1])
                         }
 
                     }
                 } else if (message.startsWith("TIMEOUT")) {
                     val parts = message.split('|')
                     CoroutineScope(Dispatchers.Main).launch {
-                        val deferred = async { acknowledgeGameEvent(parts[1]) }
+                        val deferred = async { acknowledgeGameEvent(parts[2]) }
                         deferred.await()
 
                         if (deferred.getCompleted()) {
-                            showEndGameDialog(opponentName + " timed out. You win.")
+                            showEndGameDialog(opponentName + " timed out. You win. Your new rating is " + parts[1])
                         }
                     }
                 } else if (message.startsWith("FORFEIT")) {
@@ -400,6 +433,7 @@ class GameActivity : AppCompatActivity() {
                         deferred.await()
 
                         if (deferred.getCompleted()) {
+                            startTimer()
 
                             if (gameStarted) {
                                 return@launch;
@@ -569,6 +603,7 @@ class GameActivity : AppCompatActivity() {
         if (callback == null) {
             checkersBoard.doServerMove(squares, isKing!!) {
                 setTurn(true)
+                startTimer();
             }
         } else {
             checkersBoard.doServerMove(squares, isKing!!, callback)
@@ -658,7 +693,7 @@ class GameActivity : AppCompatActivity() {
             val call = client.newCall(request)
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    showMessage("Network error. Failed to connect: ${e.message}")
+                    showMessage("Network error. Failed to connect. Try again soon.")
                     continuation.resumeWithException(e)
                     finish()
                 }
@@ -980,7 +1015,7 @@ class GameActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 runOnUiThread {
-                    showMessage("Network error. Failed to connect: ${e.message}")
+                    showMessage("Network error. Failed to connect. Try again soon.")
                 }
             }
 

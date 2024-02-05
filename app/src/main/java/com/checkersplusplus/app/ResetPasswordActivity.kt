@@ -118,7 +118,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
-                showMessage("Network error. Failed to connect: ${e.message}")
+                showMessage("Network error. Failed to connect. Try again soon.")
                 buttonPressed = false
             }
 

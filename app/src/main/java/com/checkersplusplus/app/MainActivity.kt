@@ -152,50 +152,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val tutorial = sharedPreferences.getString("tutorial", null)
-
-        if (tutorial == null) {
-            runOnUiThread {
-                // Create an AlertDialog builder
-                val builder = AlertDialog.Builder(this)
-
-                val htmlFormattedText = HtmlCompat.fromHtml(
-                    "Don't know the rules? Checkers++ is different from traditional checkers. " +
-                            "We highly recommend you visit our website to learn about the different rules. <br/><a href='https://www.checkersplusplus.com'>www.checkersplusplus.com</a>",
-                    HtmlCompat.FROM_HTML_MODE_LEGACY
-                )
-
-                // Set the message to show in the dialog
-                builder.setMessage(htmlFormattedText)
-
-                // Add a button to close the dialog
-                builder.setNegativeButton("Close") { dialog, _ ->
-                    // User clicked the "Close" button, so dismiss the dialog
-                    dialog.dismiss()
-                }
-
-                builder.setPositiveButton("Dont show again") { dialog, _ ->
-                    sharedPreferences.edit().putString("tutorial", "tutorial").apply()
-                    dialog.dismiss()
-                }
-
-                // Create and show the AlertDialog
-                val dialog = builder.create()
-
-                // Set a dismiss listener on the dialog
-                dialog.setOnDismissListener {
-                    if (intent != null) {
-                        startActivity(intent)
-                    }
-                }
-
-                // Optionally, prevent the dialog from being canceled when touched outside
-                dialog.setCanceledOnTouchOutside(false)
-                dialog.show()
-                (dialog.findViewById(android.R.id.message) as? TextView)?.movementMethod =  LinkMovementMethod.getInstance()
-            }
-        }
-
         verifyVersion()
     }
 
@@ -402,11 +358,18 @@ class MainActivity : AppCompatActivity() {
                             val sessionId = loginResponse["sessionId"]
                             val gameId = loginResponse["gameId"]
                             val accountId = loginResponse["accountId"]
+                            val tutorial = loginResponse["tutorial"]
+
+                            //Log.e("LOGIN", loginResponse.toString())
 
                             // Should never happen
                             if (accountId == null || sessionId == null) {
                                 showMessage("Server response missing data. Try again soon", null)
                                 return
+                            }
+
+                            if (tutorial != null) {
+                                StorageUtil.saveData("tutorial", tutorial)
                             }
 
                             if (sessionId != null) {
