@@ -323,6 +323,7 @@ class GameActivity : AppCompatActivity() {
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 //restartApp()
+                connected = false
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -491,11 +492,10 @@ class GameActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) { // Starts a coroutine in the background thread
             var attempts = 0
 
-            while (attempts <= 4) {
+            while (connected) {
                 val sessionId = StorageUtil.getData("sessionId")
                 webSocket.send(sessionId)
-                ++attempts
-                delay(10_000)
+                delay(30_000)
             }
             withContext(Dispatchers.Main) {
                 // Code to run on the main thread, like updating the UI
