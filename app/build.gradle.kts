@@ -11,8 +11,8 @@ android {
         applicationId = "com.checkersplusplus.app"
         minSdk = 24
         targetSdk = 33
-        versionCode = 6
-        versionName = "Release"
+        versionCode = 13
+        versionName = "Checkers++"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -23,16 +23,19 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            //proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             //buildConfigField("String", "BASE_URL", "\"192.168.0.25:8080/checkersplusplus/api\"")
             buildConfigField("String", "BASE_URL", "\"server.checkersplusplus.com/checkersplusplus/api\"")
-            buildConfigField("String", "APP_VERSION", "\"1.0\"")
+            buildConfigField("String", "APP_VERSION", "\"1.1\"")
             buildConfigField("Long", "NETWORK_TIMEOUT", "7L")
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
         }
         debug {
             //buildConfigField("String", "BASE_URL", "\"192.168.0.25:8080/checkersplusplus/api\"")
             buildConfigField("String", "BASE_URL", "\"server.checkersplusplus.com/checkersplusplus/api\"")
-            buildConfigField("String", "APP_VERSION", "\"1.0\"")
+            buildConfigField("String", "APP_VERSION", "\"1.1\"")
             buildConfigField("Long", "NETWORK_TIMEOUT", "7L")
         }
     }

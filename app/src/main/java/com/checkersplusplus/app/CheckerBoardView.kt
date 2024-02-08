@@ -102,10 +102,11 @@ class CheckerBoardView(context: Context, attrs: AttributeSet) : View(context, at
         }
 
         val coordinatesPairs = arrayListOf<CoordinatePair>()
-        var lastSquare = selectedSquares[0]
+        var lastSquare: CheckerSquare? = null
 
         for (square in selectedSquares) {
-            if (square == lastSquare) {
+            if (lastSquare == null) {
+                lastSquare = square
                 continue
             }
 
