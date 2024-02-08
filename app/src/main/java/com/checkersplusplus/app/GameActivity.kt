@@ -48,6 +48,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.lang.Integer.min
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -59,7 +60,7 @@ class GameActivity : AppCompatActivity() {
     private var playersTurn : Boolean = false
     private var currentMove: Int = 0
     private var gameStarted : Boolean = false
-    private val lock = Any()
+    private var processingMove = AtomicBoolean(false)
     private var buttonPressed: Boolean = false
     private var isBlack: Boolean = false
     private var connected: Boolean = false
@@ -143,7 +144,7 @@ class GameActivity : AppCompatActivity() {
         mAdView2.loadAd(adRequest2)
 
         val adRequest = AdRequest.Builder().build()
-        InterstitialAd.load(this, "ca-app-pub-3940256099942544/1033173712", adRequest,
+        InterstitialAd.load(this, "ca-app-pub-7797105685801671/6364869814", adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(interstitialAd: InterstitialAd) {
                     // The mInterstitialAd reference will be null until
@@ -197,13 +198,17 @@ class GameActivity : AppCompatActivity() {
                     buttonPressed = false
 
                     if (result.getCompleted()) {
-                        countDownTimer?.cancel()
-                        val status: TextView = findViewById(R.id.timeLeftText)
-                        status.text = ""
-                        checkersBoard.doMove()
-                        setTurn(false)
-                        checkersBoard.invalidate()
-                        checkersBoard.requestLayout()
+                        try {
+                            countDownTimer?.cancel()
+                            val status: TextView = findViewById(R.id.timeLeftText)
+                            status.text = ""
+                            checkersBoard.doMove()
+                            setTurn(false)
+                            //checkersBoard.invalidate()
+                            //checkersBoard.requestLayout()
+                        } catch (e: Exception) {
+                            restartApp()
+                        }
                     }
                 }
             } else {
@@ -318,7 +323,7 @@ class GameActivity : AppCompatActivity() {
         val listener = object : WebSocketListener() {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 //showFailureDialog("CLOSING" + reason + " " + code.toString(), false)
-                //webSocket.close(1000, null)
+                connected = false
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -327,7 +332,7 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                showFailureDialog("WEBSOCKET_FAILUIRE", false)
+                showFailureDialog("Failed to connect", true)
 //                webSocket.close(1000, null)
 //                connected = false
             }
@@ -338,11 +343,13 @@ class GameActivity : AppCompatActivity() {
                 if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
                     CoroutineScope(Dispatchers.Main).launch {
-                        val deferred = async { acknowledgeGameEvent(parts[3]) }
-                        deferred.await()
-
-                        if (deferred.getCompleted()) {
+                        try {
                             processMoveFromServer(parts[1], parts[2])
+                            acknowledgeGameEventSync(parts[3])
+                            currentMove++
+                            processingMove.set(false)
+                        } catch (e: Exception) {
+                            processingMove.set(false)
                         }
                     }
                 } else if (message.startsWith("TIMEOUT_LOSS")) {
@@ -403,7 +410,11 @@ class GameActivity : AppCompatActivity() {
                             val newRating = parts[1]
                             val moveNum = parts[2]
                             val finalMove = parts[3]
-                            processMoveFromServer(moveNum, finalMove) {
+                            try {
+                                processMoveFromServer(moveNum, finalMove) {
+                                    showEndGameDialog("You lose. Your new rating is " + newRating)
+                                }
+                            } catch (e: Exception) {
                                 showEndGameDialog("You lose. Your new rating is " + newRating)
                             }
                         }
@@ -421,7 +432,11 @@ class GameActivity : AppCompatActivity() {
                             } else {
                                 val moveNum = parts[1]
                                 val finalMove = parts[2]
-                                processMoveFromServer(moveNum, finalMove) {
+                                try {
+                                    processMoveFromServer(moveNum, finalMove) {
+                                        showEndGameDialog("Draw.")
+                                    }
+                                } catch (e: Exception) {
                                     showEndGameDialog("Draw.")
                                 }
                             }
@@ -490,8 +505,6 @@ class GameActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch(Dispatchers.IO) { // Starts a coroutine in the background thread
-            var attempts = 0
-
             while (connected) {
                 val sessionId = StorageUtil.getData("sessionId")
                 webSocket.send(sessionId)
@@ -501,6 +514,32 @@ class GameActivity : AppCompatActivity() {
                 // Code to run on the main thread, like updating the UI
             }
         }
+    }
+
+    private fun acknowledgeGameEventSync(eventId: String) {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
+        val request = Request.Builder()
+            .url("https://" + BuildConfig.BASE_URL + "/game/event/" + eventId)
+            .build()
+
+        val call = client.newCall(request)
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                //continuation.resume(false)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    //continuation.resume(true)
+                } else {
+                    //continuation.resume(false)
+                }
+            }
+        })
     }
 
     private suspend fun acknowledgeGameEvent(eventId: String): Boolean {
@@ -544,7 +583,11 @@ class GameActivity : AppCompatActivity() {
         val coordinatePairs = arrayListOf<CoordinatePair>()
         var isKing: Boolean? = null
 
-        synchronized(lock) {
+        if (!processingMove.getAndSet(true)) {
+            if (num == currentMove) {
+                return
+            }
+
             if (num == currentMove + 1) {
                 val moves = moveList.split('+')
                 var finalEndRow: Int = 0
@@ -577,7 +620,6 @@ class GameActivity : AppCompatActivity() {
                     movesToAnimate.add(Pair(Pair(fromRow, fromCol), Pair(toRow, toCol)))
                 }
 
-                currentMove++
                 checkersBoard.game!!.doMove(coordinatePairs)
 
                 isKing = checkersBoard.game!!.board!!.getPiece(Coordinate(finalEndCol, finalEndRow)) is King
@@ -989,7 +1031,7 @@ class GameActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        webSocket.close(1000, "")
+        webSocket.close(1000, "Activity destroyed")
         // Ensure the client dispatcher is properly shut down on app exit
         webSocketClient.dispatcher.executorService.shutdown()
         var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
