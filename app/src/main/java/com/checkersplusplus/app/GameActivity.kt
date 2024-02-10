@@ -10,7 +10,6 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.View
 import android.widget.Button
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -30,6 +29,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -49,6 +49,8 @@ import java.io.IOException
 import java.lang.Integer.min
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.logging.Level
+import java.util.logging.Logger
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -74,7 +76,7 @@ class GameActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        Logger.getLogger(OkHttpClient::class.java.name).setLevel(Level.SEVERE)
         setContentView(R.layout.activity_game)
 
         val view = findViewById<View>(R.id.checkerBoardView) // Replace with your view ID
@@ -144,7 +146,10 @@ class GameActivity : AppCompatActivity() {
         mAdView2.loadAd(adRequest2)
 
         val adRequest = AdRequest.Builder().build()
-        InterstitialAd.load(this, "ca-app-pub-7797105685801671/6364869814", adRequest,
+        InterstitialAd.load(this,
+            //"ca-app-pub-7797105685801671/6364869814",
+            "ca-app-pub-3940256099942544/1033173712",
+            adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(interstitialAd: InterstitialAd) {
                     // The mInterstitialAd reference will be null until
@@ -193,9 +198,12 @@ class GameActivity : AppCompatActivity() {
 
             if (checkersBoard.shouldDoMove()) {
                 CoroutineScope(Dispatchers.Main).launch {
+                    if (isActive) {
+                        onResume()
+                    }
+
                     val result = async { sendMove() }
                     result.await()
-                    buttonPressed = false
 
                     if (result.getCompleted()) {
                         try {
@@ -210,6 +218,8 @@ class GameActivity : AppCompatActivity() {
                             restartApp()
                         }
                     }
+
+                    buttonPressed = false
                 }
             } else {
                 runOnUiThread {
@@ -286,7 +296,7 @@ class GameActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     showEndGameDialog(game["message"].toString())
                 } else {
-                    showMessage(game["message"].toString())
+                    showFailureDialog(game["message"].toString(), true)
                 }
             }
         })
@@ -338,16 +348,28 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onMessage(webSocket: WebSocket, message: String) {
-                //Log.e("MSG", message)
+                Log.e("MSG", message)
 
                 if (message.startsWith("MOVE")) {
                     val parts = message.split('|')
+                    val moveNum = parts[1].toIntOrNull()
+
+                    if (moveNum == currentMove) {
+                        acknowledgeGameEventSync(parts[3])
+                        return
+                    }
+
+                    if (processingMove.get()) {
+                        return
+                    }
+
                     CoroutineScope(Dispatchers.Main).launch {
                         try {
-                            processMoveFromServer(parts[1], parts[2])
-                            acknowledgeGameEventSync(parts[3])
-                            currentMove++
-                            processingMove.set(false)
+                            if (processMoveFromServer(parts[1], parts[2])) {
+                                acknowledgeGameEventSync(parts[3])
+                                currentMove++
+                                processingMove.set(false)
+                            }
                         } catch (e: Exception) {
                             processingMove.set(false)
                         }
@@ -570,22 +592,27 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
-    private fun processMoveFromServer(moveNum: String, moveList: String,
-                                      callback: (() -> Unit)? = null) {
-        val num = moveNum.toIntOrNull()
-
-        if (num == null) {
-            restartApp()
-        }
-
-        var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
-        val movesToAnimate = arrayListOf<Pair<Pair<Int, Int>, Pair<Int, Int>>>()
-        val coordinatePairs = arrayListOf<CoordinatePair>()
-        var isKing: Boolean? = null
-
+    private fun processMoveFromServer(
+        moveNum: String, moveList: String,
+        callback: (() -> Unit)? = null
+    ): Boolean {
         if (!processingMove.getAndSet(true)) {
+            val num = moveNum.toIntOrNull()
+
+            if (num == null) {
+                restartApp()
+            }
+
+            var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
+            val movesToAnimate = arrayListOf<Pair<Pair<Int, Int>, Pair<Int, Int>>>()
+            val coordinatePairs = arrayListOf<CoordinatePair>()
+            var isKing: Boolean? = null
+
+//            Log.e("NUM", num.toString())
+//            Log.e("CUR", currentMove.toString())
             if (num == currentMove) {
-                return
+                processingMove.set(false)
+                return false
             }
 
             if (num == currentMove + 1) {
@@ -603,17 +630,35 @@ class GameActivity : AppCompatActivity() {
                     val start = parts[0]
                     // Log.e("START", start)
                     val starts = start.split(',')
-                    val startRow = if (starts[0].startsWith("r")) parseOutNumber(starts[0]) else parseOutNumber(starts[1])
-                    val startCol = if (starts[0].startsWith("c")) parseOutNumber(starts[0]) else parseOutNumber(starts[1])
+                    val startRow =
+                        if (starts[0].startsWith("r")) parseOutNumber(starts[0]) else parseOutNumber(
+                            starts[1]
+                        )
+                    val startCol =
+                        if (starts[0].startsWith("c")) parseOutNumber(starts[0]) else parseOutNumber(
+                            starts[1]
+                        )
                     val end = parts[1]
                     val ends = end.split(',')
-                    val endRow = if (ends[0].startsWith("r")) parseOutNumber(ends[0]) else parseOutNumber(ends[1])
-                    val endCol = if (ends[0].startsWith("c")) parseOutNumber(ends[0]) else parseOutNumber(ends[1])
+                    val endRow =
+                        if (ends[0].startsWith("r")) parseOutNumber(ends[0]) else parseOutNumber(
+                            ends[1]
+                        )
+                    val endCol =
+                        if (ends[0].startsWith("c")) parseOutNumber(ends[0]) else parseOutNumber(
+                            ends[1]
+                        )
                     finalEndRow = endRow
                     finalEndCol = endCol
-                    coordinatePairs.add(CoordinatePair(Coordinate(startCol, startRow), Coordinate(endCol, endRow)))
+                    coordinatePairs.add(
+                        CoordinatePair(
+                            Coordinate(startCol, startRow),
+                            Coordinate(endCol, endRow)
+                        )
+                    )
                     val fromRow = if (checkersBoard.isBlack) translateNumber(startRow) else startRow
-                    val fromCol = if (!checkersBoard.isBlack) translateNumber(startCol) else startCol
+                    val fromCol =
+                        if (!checkersBoard.isBlack) translateNumber(startCol) else startCol
                     val toRow = if (checkersBoard.isBlack) translateNumber(endRow) else endRow
                     val toCol = if (!checkersBoard.isBlack) translateNumber(endCol) else endCol
 
@@ -622,33 +667,55 @@ class GameActivity : AppCompatActivity() {
 
                 checkersBoard.game!!.doMove(coordinatePairs)
 
-                isKing = checkersBoard.game!!.board!!.getPiece(Coordinate(finalEndCol, finalEndRow)) is King
+                isKing = checkersBoard.game!!.board!!.getPiece(
+                    Coordinate(
+                        finalEndCol,
+                        finalEndRow
+                    )
+                ) is King
             } else {
-                return
+                processingMove.set(false)
+                return false
             }
-        }
 
-        val squares = mutableListOf<CheckerSquare>()
+            val squares = mutableListOf<CheckerSquare>()
 
-        for (idx in 0 until movesToAnimate.size) {
-            if (idx == 0) {
-                squares.add(findSquareForCoordinates(movesToAnimate[idx].first.first,
-                    movesToAnimate[idx].first.second))
-                squares.add(findSquareForCoordinates(movesToAnimate[idx].second.first,
-                    movesToAnimate[idx].second.second))
+            for (idx in 0 until movesToAnimate.size) {
+                if (idx == 0) {
+                    squares.add(
+                        findSquareForCoordinates(
+                            movesToAnimate[idx].first.first,
+                            movesToAnimate[idx].first.second
+                        )
+                    )
+                    squares.add(
+                        findSquareForCoordinates(
+                            movesToAnimate[idx].second.first,
+                            movesToAnimate[idx].second.second
+                        )
+                    )
+                } else {
+                    squares.add(
+                        findSquareForCoordinates(
+                            movesToAnimate[idx].second.first,
+                            movesToAnimate[idx].second.second
+                        )
+                    )
+                }
+            }
+
+            if (callback == null) {
+                checkersBoard.doServerMove(squares, isKing!!) {
+                    setTurn(true)
+                    startTimer();
+                }
             } else {
-                squares.add(findSquareForCoordinates(movesToAnimate[idx].second.first,
-                    movesToAnimate[idx].second.second))
+                checkersBoard.doServerMove(squares, isKing!!, callback)
             }
-        }
 
-        if (callback == null) {
-            checkersBoard.doServerMove(squares, isKing!!) {
-                setTurn(true)
-                startTimer();
-            }
+            return true
         } else {
-            checkersBoard.doServerMove(squares, isKing!!, callback)
+            return false
         }
     }
 

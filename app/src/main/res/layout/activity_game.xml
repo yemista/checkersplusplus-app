@@ -79,7 +79,8 @@
                     android:layout_alignParentBottom="true"
                     android:layout_centerHorizontal="true"
                     ads:adSize="BANNER"
-                    ads:adUnitId="ca-app-pub-7797105685801671/5078357235"></com.google.android.gms.ads.AdView>
+                    ads:adUnitId="ca-app-pub-3940256099942544/6300978111"></com.google.android.gms.ads.AdView>
+<!--                ads:adUnitId="ca-app-pub-7797105685801671/5078357235"-->
                 <!-- Resign Button -->
                 <Button
                     android:id="@+id/resignButton"
