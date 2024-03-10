@@ -30,6 +30,34 @@
 
                 android:src="@drawable/logo2" />
 
+
+<!--            <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"-->
+<!--                xmlns:app="http://schemas.android.com/apk/res-auto"-->
+<!--                xmlns:tools="http://schemas.android.com/tools"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="match_parent"-->
+<!--                tools:context=".MainActivity">-->
+
+<!--                <TextView-->
+<!--                    android:id="@+id/textView"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:text="@string/sso_login_text"-->
+<!--                    app:layout_constraintBottom_toTopOf="@+id/sso_button"-->
+<!--                    app:layout_constraintEnd_toEndOf="parent"-->
+<!--                    app:layout_constraintStart_toStartOf="parent"-->
+<!--                    android:layout_marginBottom="16dp"/>-->
+
+<!--                <com.google.android.gms.common.SignInButton-->
+<!--                    android:id="@+id/sso_button"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    app:layout_constraintTop_toBottomOf="@+id/textView"-->
+<!--                    app:layout_constraintEnd_toEndOf="parent"-->
+<!--                    app:layout_constraintStart_toStartOf="parent"/>-->
+
+<!--            </androidx.constraintlayout.widget.ConstraintLayout>-->
+
             <!-- Username input field -->
             <EditText
                 android:id="@+id/usernameEditText"
@@ -37,7 +65,8 @@
                 android:layout_height="wrap_content"
                 android:hint="@string/username"
                 android:inputType="textPersonName"
-                android:maxLines="1" />
+                android:maxLines="1"
+                android:layout_marginTop="8dp"/>
 
             <!-- Password input field -->
             <EditText
@@ -57,7 +86,7 @@
                 android:id="@+id/checkboxSaveUsername"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Save credentials          " />
+                android:text="@string/save_credentials" />
             <Space
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -66,7 +95,7 @@
                 android:id="@+id/forgotUsernameLink"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Forgot username?"
+                android:text="@string/forgot_username"
                 android:textColor="@android:color/holo_blue_dark" />
         </LinearLayout>
             <!-- Login Button -->
@@ -77,27 +106,25 @@
                 android:layout_marginTop="16dp"
                 android:text="@string/login" />
 
-
-            <Button
-                android:id="@+id/leaderboard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="@string/leaderboard" />
-
-            <Button
-                android:id="@+id/emailButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Contact Support" />
-
-            <!-- Create Account Button -->
             <Button
                 android:id="@+id/createAccountButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/create_account" />
+
+            <Button
+                android:id="@+id/leaderboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/leaderboard" />
+
+            <Button
+                android:id="@+id/emailButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/contact_support" />
 
             <Button
                 android:id="@+id/verifyAccountButton"

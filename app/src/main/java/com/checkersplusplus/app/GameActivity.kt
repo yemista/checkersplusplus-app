@@ -147,8 +147,7 @@ class GameActivity : AppCompatActivity() {
 
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(this,
-            //"ca-app-pub-7797105685801671/6364869814",
-            "ca-app-pub-3940256099942544/1033173712",
+            "ca-app-pub-7797105685801671/6364869814",
             adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(interstitialAd: InterstitialAd) {

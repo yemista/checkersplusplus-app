@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services") version "4.3.10" apply false
 }
 
 android {
@@ -11,7 +12,7 @@ android {
         applicationId = "com.checkersplusplus.app"
         minSdk = 24
         targetSdk = 33
-        versionCode = 16
+        versionCode = 18
         versionName = "Checkers++"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -61,12 +62,15 @@ android {
     }
 }
 
+
 dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("androidx.core:core-ktx:1.9.0")
+    implementation("com.google.android.gms:play-services-auth:19.0.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
     implementation("androidx.activity:activity-compose:1.7.0")
     implementation(platform("androidx.compose:compose-bom:2023.03.00"))
+    implementation("androidx.activity:activity-ktx:1.2.0")
     implementation("androidx.compose.ui:ui")
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("androidx.compose.ui:ui-graphics")

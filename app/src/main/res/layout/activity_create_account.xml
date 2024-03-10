@@ -9,20 +9,20 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Email" />
+        android:text="@string/email" />
 
     <EditText
         android:id="@+id/emailEditTextCreateAccount"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textEmailAddress"
-        android:hint="Enter your email"/>
+        android:hint="@string/email_hint"/>
 
     <!-- Username input field -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Username"
+        android:text="@string/username"
         android:layout_marginTop="16dp"/>
 
     <EditText
@@ -30,13 +30,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPersonName"
-        android:hint="Enter your username"/>
+        android:hint="@string/username_hint"/>
 
     <!-- Password input field -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Password"
+        android:text="@string/password"
         android:layout_marginTop="16dp"/>
 
     <EditText
@@ -44,13 +44,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPassword"
-        android:hint="Enter your password"/>
+        android:hint="@string/password_hint"/>
 
     <!-- Confirm Password input field -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Confirm Password"
+        android:text="@string/confirm_password"
         android:layout_marginTop="16dp"/>
 
     <EditText
@@ -58,14 +58,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textPassword"
-        android:hint="Confirm your password"/>
+        android:hint="@string/confirm_password_hint"/>
 
     <!-- Create Account Button -->
     <Button
         android:id="@+id/createAccountButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Create Account"
+        android:text="@string/create_account"
         android:layout_marginTop="24dp"
         android:layout_gravity="center_horizontal"/>
 

@@ -1,5 +1,6 @@
 package com.checkersplusplus.app
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
@@ -14,11 +15,15 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.text.HtmlCompat
 import androidx.lifecycle.Lifecycle
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -152,7 +157,45 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Configure Google Sign-In options
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .build()
+
+        val googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        // Launch the sign-in intent when the button is clicked
+//        val signInButton: com.google.android.gms.common.SignInButton = findViewById(R.id.sso_button)
+//        signInButton.setOnClickListener {
+//            val signInIntent = googleSignInClient.signInIntent
+//            signInLauncher.launch(signInIntent)
+//        }
+
         verifyVersion()
+    }
+
+    private val signInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        Log.e("SSO", result.resultCode.toString())
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                val email = account.email
+                val networkScope = CoroutineScope(Dispatchers.IO)
+                networkScope.launch {
+                    try {
+                        performSsoLogin(email!!)
+                    } catch (e: CancellationException) {
+                        // Ignore cancellation
+                    } catch (e: Exception) {
+                    }
+                }
+            } catch (e: ApiException) {
+                showMessage(e.toString(), null)
+            }
+        }
     }
 
     private fun showUsernameDialog() {
@@ -305,6 +348,123 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    private suspend fun performSsoLogin(email: String): String {
+        val trimmedUsername = email.trim()
+
+        // Prepare JSON body
+        val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+        val jsonBody = "{\"ssoEmail\":\"$trimmedUsername\"}"
+
+        // Create request
+        val client = OkHttpClient.Builder()
+            .connectTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .readTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+            .build()
+        val requestBody = jsonBody.toRequestBody(jsonMediaType)
+        val request = Request.Builder()
+            .url("https://" + BuildConfig.BASE_URL + "/account/login/sso")
+            .post(requestBody)
+            .build()
+
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            call.enqueue(object : Callback {
+                override fun onResponse(call: Call, response: Response) {
+                    val responseBody = response.body?.string()
+
+                    if (responseBody == null) {
+                        showMessage("No response from server. Try again soon", null)
+                        return
+                    }
+
+                    val loginResponse = ResponseUtil.parseJson(responseBody)
+
+                    if (loginResponse == null) {
+                        showMessage("Invalid response from server. Try again soon", null)
+                        return
+                    }
+
+                    val message = loginResponse["message"]
+
+                    if (response.isSuccessful) {
+                        val sessionId = loginResponse["sessionId"]
+                        val gameId = loginResponse["gameId"]
+                        val accountId = loginResponse["accountId"]
+                        val tutorial = loginResponse["tutorial"]
+
+                        //Log.e("LOGIN", loginResponse.toString())
+
+                        // Should never happen
+                        if (accountId == null || sessionId == null) {
+                            showMessage("Server response missing data. Try again soon", null)
+                            return
+                        }
+
+                        if (tutorial != null) {
+                            StorageUtil.saveData("tutorial", tutorial)
+                        }
+
+                        if (sessionId != null) {
+                            StorageUtil.saveData("sessionId", sessionId)
+                        }
+
+                        if (accountId != null) {
+                            StorageUtil.saveData("accountId", accountId)
+                        }
+
+                        buttonPressed = false
+                        var intent: Intent
+
+                        if (gameId != null) {
+                            intent = Intent(this@MainActivity, GameActivity::class.java)
+                            intent.putExtra("gameId", gameId)
+                        } else {
+                            intent = Intent(this@MainActivity, OpenGamesActivity::class.java)
+                        }
+
+                        if (message != null) {
+                            if (message.contains("successful")) {
+                                runOnUiThread {
+                                    Toast.makeText(
+                                        applicationContext,
+                                        message,
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    buttonPressed = false
+                                }
+                                startActivity(intent)
+                            } else {
+                                showMessage(message, intent)
+                            }
+                        } else {
+                            startActivity(intent)
+                        }
+                        continuation.resume(responseBody)
+                    } else {
+                        if (message != null) {
+                            showMessage(message, null)
+                        }
+
+                        continuation.resumeWithException(IOException("Failed to load data"))
+                    }
+                }
+
+                override fun onFailure(call: Call, e: IOException) {
+                    continuation.resumeWithException(e)
+                }
+            })
+
+            continuation.invokeOnCancellation {
+                try {
+                    call.cancel()
+                } catch (ex: Throwable) {
+                    // Ignore cancellation exception
+                }
+            }
+        }
     }
 
     private suspend fun performLogin(): String {

@@ -8,19 +8,19 @@
         android:id="@+id/createGameButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Create Game"/>
+        android:text="@string/create_game"/>
 
     <Button
         android:id="@+id/refreshGamesButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Refresh"/>
+        android:text="@string/refresh"/>
 
     <Button
         android:id="@+id/filterGamesButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Filter"/>
+        android:text="@string/filter"/>
     <LinearLayout
         android:id="@+id/layoutInputs"
         android:layout_width="match_parent"
@@ -32,28 +32,28 @@
             android:id="@+id/editTextUsername"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Username"
+            android:hint="@string/username"
             android:inputType="text"/>
 
         <EditText
             android:id="@+id/editTextLowestRating"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Lowest Rating"
+            android:hint="@string/low_rating"
             android:inputType="number"/>
 
         <EditText
             android:id="@+id/editTextHighestRating"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Highest Rating"
+            android:hint="@string/high_rating"
             android:inputType="number"/>
 
         <!-- Spinner for Sort By -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Sort by"/>
+            android:text="@string/sort_by"/>
         <Spinner
             android:id="@+id/spinnerSortBy"
             android:layout_width="match_parent"
@@ -63,7 +63,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Sort Direction"/>
+            android:text="@string/sort_direction"/>
         <Spinner
             android:id="@+id/spinnerSortDirection"
             android:layout_width="match_parent"
@@ -73,7 +73,7 @@
             android:id="@+id/editTextNumberOfGames"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Number of Games"
+            android:hint="@string/num_games"
             android:inputType="number"/>
     </LinearLayout>
 
@@ -89,7 +89,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Black"
+            android:text="@string/black"
             android:gravity="left"
             android:textColor="@color/white"/>
 
@@ -97,14 +97,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="White"
+            android:text="@string/white"
             android:gravity="left"
             android:textColor="@color/white"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Join"
+            android:text="@string/join"
             android:gravity="right"
             android:textColor="@color/white"/>
     </LinearLayout>

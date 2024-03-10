@@ -9,14 +9,14 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Please enter your username and the verification code"
+        android:text="@string/verification_code_text"
         android:layout_marginBottom="16dp"/>
 
     <EditText
         android:id="@+id/usernameEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Username"
+        android:hint="@string/username"
         android:inputType="textPersonName"
         android:layout_marginBottom="16dp"/>
 
@@ -24,7 +24,7 @@
         android:id="@+id/verificationCodeEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Verification Code"
+        android:hint="@string/verification_code"
         android:inputType="text"
         android:layout_marginBottom="16dp"/>
 
@@ -32,13 +32,13 @@
         android:id="@+id/sendVerificationCodeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Submit Verification Code"
+        android:text="@string/submit_verification_code"
         android:layout_marginTop="24dp"/>
 
     <Button
         android:id="@+id/resendVerificationCodeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Resend Verification Code"
+        android:text="@string/resend_verification_code"
         android:layout_marginTop="24dp"/>
 </LinearLayout>

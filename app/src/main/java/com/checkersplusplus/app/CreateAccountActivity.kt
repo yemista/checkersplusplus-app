@@ -139,12 +139,13 @@ class CreateAccountActivity : AppCompatActivity() {
     }
 
     private fun isValidUsername(username: String): Boolean {
-        return username.length in 3..20
+        return username.length in 3..30
     }
 
     private fun isValidPassword(password: String): Boolean {
-        val passwordPattern = "^(?=.*[0-9])(?=.*[a-zA-Z]).{8,}$"
-        return password.matches(passwordPattern.toRegex())
+//        val passwordPattern = "^(?=.*[0-9])(?=.*[a-zA-Z]).{8,}$"
+//        return password.matches(passwordPattern.toRegex())
+        return true
     }
 
     private fun showResponseDialog(message: String) {

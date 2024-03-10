@@ -32,14 +32,14 @@
                     android:id="@+id/clearButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Clear" />
+                    android:text="@string/clear_moves" />
 
                 <!-- Move Button -->
                 <Button
                     android:id="@+id/moveButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Move" />
+                    android:text="@string/move" />
 
                 <!-- Status TextView -->
                 <TextView
@@ -79,14 +79,13 @@
                     android:layout_alignParentBottom="true"
                     android:layout_centerHorizontal="true"
                     ads:adSize="BANNER"
-                    ads:adUnitId="ca-app-pub-3940256099942544/6300978111"></com.google.android.gms.ads.AdView>
-<!--                ads:adUnitId="ca-app-pub-7797105685801671/5078357235"-->
+                    ads:adUnitId="ca-app-pub-7797105685801671/5078357235"></com.google.android.gms.ads.AdView>
                 <!-- Resign Button -->
                 <Button
                     android:id="@+id/resignButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Resign"
+                    android:text="@string/resign"
                     android:visibility="gone" />
 
                 <!-- Cancel Button -->
@@ -94,7 +93,7 @@
                     android:id="@+id/cancelButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Cancel" />
+                    android:text="@string/cancel_game" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
