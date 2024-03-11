@@ -1072,10 +1072,10 @@ class GameActivity : AppCompatActivity() {
 
     private fun shouldShowAd(): Boolean {
         val sharedPreferences = getSharedPreferences("CheckersPlusPlusAppPrefs", Context.MODE_PRIVATE)
-        var numGames = sharedPreferences.getInt("numGames", 0)
+        var numGames = sharedPreferences.getInt("numGames", 3)
         numGames += 1
 
-        if (numGames >= 5) {
+        if (numGames >= 3) {
             sharedPreferences.edit().putInt("numGames", 0).apply()
             return true
         } else {

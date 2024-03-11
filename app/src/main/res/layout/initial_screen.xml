@@ -31,32 +31,32 @@
                 android:src="@drawable/logo2" />
 
 
-<!--            <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"-->
-<!--                xmlns:app="http://schemas.android.com/apk/res-auto"-->
-<!--                xmlns:tools="http://schemas.android.com/tools"-->
-<!--                android:layout_width="match_parent"-->
-<!--                android:layout_height="match_parent"-->
-<!--                tools:context=".MainActivity">-->
+            <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                tools:context=".MainActivity">
 
-<!--                <TextView-->
-<!--                    android:id="@+id/textView"-->
-<!--                    android:layout_width="wrap_content"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    android:text="@string/sso_login_text"-->
-<!--                    app:layout_constraintBottom_toTopOf="@+id/sso_button"-->
-<!--                    app:layout_constraintEnd_toEndOf="parent"-->
-<!--                    app:layout_constraintStart_toStartOf="parent"-->
-<!--                    android:layout_marginBottom="16dp"/>-->
+                <TextView
+                    android:id="@+id/textView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sso_login_text"
+                    app:layout_constraintBottom_toTopOf="@+id/sso_button"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    android:layout_marginBottom="16dp"/>
 
-<!--                <com.google.android.gms.common.SignInButton-->
-<!--                    android:id="@+id/sso_button"-->
-<!--                    android:layout_width="wrap_content"-->
-<!--                    android:layout_height="wrap_content"-->
-<!--                    app:layout_constraintTop_toBottomOf="@+id/textView"-->
-<!--                    app:layout_constraintEnd_toEndOf="parent"-->
-<!--                    app:layout_constraintStart_toStartOf="parent"/>-->
+                <com.google.android.gms.common.SignInButton
+                    android:id="@+id/sso_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintTop_toBottomOf="@+id/textView"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"/>
 
-<!--            </androidx.constraintlayout.widget.ConstraintLayout>-->
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <!-- Username input field -->
             <EditText

@@ -31,7 +31,7 @@
     <string name="change_password">Change Password</string>
     <string name="verification_code">Verification Code</string>
     <string name="verification_code_text">Please enter your username and the verification code</string>
-    <string name="submit_verification_code">Submit Verification Cod</string>
+    <string name="submit_verification_code">Submit Verification Code</string>
     <string name="resend_verification_code">Resend Verification Code</string>
     <string name="sso_login_text">You can login with your Google account or create an account below.</string>
     <string name="low_rating">Lowest Rating</string>

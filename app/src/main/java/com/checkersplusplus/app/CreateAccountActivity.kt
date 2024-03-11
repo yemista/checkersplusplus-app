@@ -60,7 +60,7 @@ class CreateAccountActivity : AppCompatActivity() {
             }
 
             if (!isValidUsername(username)) {
-                usernameEditText.error = "Username must be 3-20 characters long"
+                usernameEditText.error = "Username must be 3-30 characters long"
                 return@setOnClickListener
             }
 

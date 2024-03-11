@@ -165,11 +165,11 @@ class MainActivity : AppCompatActivity() {
         val googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         // Launch the sign-in intent when the button is clicked
-//        val signInButton: com.google.android.gms.common.SignInButton = findViewById(R.id.sso_button)
-//        signInButton.setOnClickListener {
-//            val signInIntent = googleSignInClient.signInIntent
-//            signInLauncher.launch(signInIntent)
-//        }
+        val signInButton: com.google.android.gms.common.SignInButton = findViewById(R.id.sso_button)
+        signInButton.setOnClickListener {
+            val signInIntent = googleSignInClient.signInIntent
+            signInLauncher.launch(signInIntent)
+        }
 
         verifyVersion()
     }
@@ -177,16 +177,17 @@ class MainActivity : AppCompatActivity() {
     private val signInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        Log.e("SSO", result.resultCode.toString())
+        Log.e("SSO", result.toString())
         if (result.resultCode == Activity.RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
                 val email = account.email
+                Log.e("SSO-EMAIL", email.toString())
                 val networkScope = CoroutineScope(Dispatchers.IO)
                 networkScope.launch {
                     try {
-                        performSsoLogin(email!!)
+                        performSsoLogin(email.toString()!!)
                     } catch (e: CancellationException) {
                         // Ignore cancellation
                     } catch (e: Exception) {
@@ -365,7 +366,7 @@ class MainActivity : AppCompatActivity() {
             .build()
         val requestBody = jsonBody.toRequestBody(jsonMediaType)
         val request = Request.Builder()
-            .url("https://" + BuildConfig.BASE_URL + "/account/login/sso")
+            .url("https://" + BuildConfig.BASE_URL + "/account/sso")
             .post(requestBody)
             .build()
 
@@ -374,7 +375,7 @@ class MainActivity : AppCompatActivity() {
             call.enqueue(object : Callback {
                 override fun onResponse(call: Call, response: Response) {
                     val responseBody = response.body?.string()
-
+                    Log.e("SSSO-RESP", responseBody.toString())
                     if (responseBody == null) {
                         showMessage("No response from server. Try again soon", null)
                         return
