@@ -40,7 +40,7 @@ class RequestVerificationActivity : AppCompatActivity() {
         val username = usernameEditText.text.toString().trim()
 
         if (username.isEmpty()) {
-            usernameEditText.error = "Username is required"
+            usernameEditText.error = getString(R.string.username_required)
             return
         }
 
@@ -70,7 +70,7 @@ class RequestVerificationActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
-                showMessage("Network error. Failed to connect. Try again soon.")
+                showMessage(getString(R.string.network_error))
                 buttonPressed = false
             }
 
@@ -78,14 +78,14 @@ class RequestVerificationActivity : AppCompatActivity() {
                 val responseBody = response.body?.string() ?: ""
 
                 if (responseBody == null) {
-                    showMessage("No response from server. Try again soon")
+                    showMessage(getString(R.string.no_server_response_error))
                     return
                 }
 
                 val createAccountResponse = ResponseUtil.parseJson(responseBody)
 
                 if (createAccountResponse == null) {
-                    showMessage("Invalid response from server. Try again soon")
+                    showMessage(getString(R.string.invalid_server_response_error))
                     return
                 }
 
@@ -107,7 +107,7 @@ class RequestVerificationActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }
@@ -143,7 +143,7 @@ class RequestVerificationActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }

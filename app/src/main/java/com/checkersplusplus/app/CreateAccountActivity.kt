@@ -55,22 +55,17 @@ class CreateAccountActivity : AppCompatActivity() {
             val confirmPassword = confirmPasswordEditText.text.toString()
 
             if (!isValidEmail(email)) {
-                emailEditText.error = "Invalid email address"
+                emailEditText.error = getString(R.string.invalid_email_error)
                 return@setOnClickListener
             }
 
             if (!isValidUsername(username)) {
-                usernameEditText.error = "Username must be 3-30 characters long"
-                return@setOnClickListener
-            }
-
-            if (!isValidPassword(password)) {
-                passwordEditText.error = "Password must be at least 8 characters and include a mix of upper and lower case letters, and numbers"
+                usernameEditText.error = getString(R.string.invalid_username_error)
                 return@setOnClickListener
             }
 
             if (password != confirmPassword) {
-                confirmPasswordEditText.error = "Passwords do not match"
+                confirmPasswordEditText.error = getString(R.string.password_error)
                 return@setOnClickListener
             }
 
@@ -82,13 +77,13 @@ class CreateAccountActivity : AppCompatActivity() {
                     val response = responseBody.getCompleted()
 
                     if (response == null || response == "") {
-                        showMessage("No response from server. Try again soon")
+                        showMessage(getString(R.string.no_server_response_error))
                     }
 
                     val createAccountResponse = ResponseUtil.parseJson(response)
 
                     if (createAccountResponse == null) {
-                        showMessage("Invalid response from server. Try again soon")
+                        showMessage(getString(R.string.invalid_server_response_error))
                     }
 
                     val message = createAccountResponse["message"]
@@ -122,7 +117,7 @@ class CreateAccountActivity : AppCompatActivity() {
             val call = client.newCall(request)
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    showMessage("Connection error. Please try again")
+                    showMessage(getString(R.string.no_server_response_error))
                     continuation.resumeWithException(e)
                 }
 
@@ -153,11 +148,21 @@ class CreateAccountActivity : AppCompatActivity() {
             // Create an AlertDialog builder
             val builder = AlertDialog.Builder(this)
 
-            // Set the message to show in the dialog
-            builder.setMessage(message)
+            if (message.startsWith("Account created successfully")) {
+                val translatedMessage = getString(R.string.create_accout_success)
+                builder.setMessage(translatedMessage)
+            } else if (message.startsWith("Email address is already in use")) {
+                val translatedMessage = getString(R.string.email_address_in_use_error)
+                builder.setMessage(translatedMessage)
+            } else if (message.startsWith("Username is already in use")) {
+                val translatedMessage = getString(R.string.username_in_use_error)
+                builder.setMessage(translatedMessage)
+            } else {
+                builder.setMessage(message)
+            }
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }
@@ -193,7 +198,7 @@ class CreateAccountActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }

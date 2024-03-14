@@ -19,6 +19,7 @@ class VerifyActivity : AppCompatActivity() {
     private lateinit var verificationCodeEditText: EditText
     private lateinit var usernameEditText: EditText
     private var buttonPressed: Boolean = false
+    private var closing: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,14 +44,14 @@ class VerifyActivity : AppCompatActivity() {
             val verificationCode = verificationCodeEditText.text.toString()
 
             if (verificationCode == null) {
-                verificationCodeEditText.error = "Please enter a verification code"
+                verificationCodeEditText.error = getString(R.string.verification_required)
                 return@setOnClickListener
             }
 
             val username = usernameEditText.text.toString()
 
             if (username == null) {
-                usernameEditText.error = "Please enter a user name"
+                usernameEditText.error = getString(R.string.enter_username)
                 return@setOnClickListener
             }
 
@@ -73,7 +74,7 @@ class VerifyActivity : AppCompatActivity() {
             client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     // Handle failed network request
-                    showMessage("Network error. Failed to connect. Try again soon.", false)
+                    showMessage(getString(R.string.network_error), false)
                     buttonPressed = false
                 }
 
@@ -81,14 +82,14 @@ class VerifyActivity : AppCompatActivity() {
                     val responseBody = response.body?.string() ?: ""
 
                     if (responseBody == null) {
-                        showMessage("No response from server. Try again soon", false)
+                        showMessage(getString(R.string.no_server_response_error), false)
                         return
                     }
 
                     val createAccountResponse = ResponseUtil.parseJson(responseBody)
 
                     if (createAccountResponse == null) {
-                        showMessage("Invalid response from server. Try again soon", false)
+                        showMessage(getString(R.string.invalid_server_response_error), false)
                         return
                     }
 
@@ -109,7 +110,7 @@ class VerifyActivity : AppCompatActivity() {
             val username = usernameEditText.text.toString()
 
             if (username == null) {
-                usernameEditText.error = "Please enter a user name"
+                usernameEditText.error = getString(R.string.enter_username)
                 return@setOnClickListener
             }
 
@@ -130,21 +131,21 @@ class VerifyActivity : AppCompatActivity() {
 
             client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    showMessage("Network error. Failed to connect. Try again soon.", false)
+                    showMessage(getString(R.string.network_error), false)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
                     val responseBody = response.body?.string() ?: ""
 
                     if (responseBody == null) {
-                        showMessage("No response from server. Try again soon", false)
+                        showMessage(getString(R.string.no_server_response_error), false)
                         return
                     }
 
                     val createAccountResponse = ResponseUtil.parseJson(responseBody)
 
                     if (createAccountResponse == null) {
-                        showMessage("Invalid response from server. Try again soon", false)
+                        showMessage(getString(R.string.invalid_server_response_error), false)
                         return
                     }
 
@@ -163,6 +164,10 @@ class VerifyActivity : AppCompatActivity() {
     }
 
     private fun showMessage(message: String, complete: Boolean) {
+        if (closing) {
+            return
+        }
+
         runOnUiThread {
             // Create an AlertDialog builder
             val builder = AlertDialog.Builder(this)
@@ -171,7 +176,7 @@ class VerifyActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }
@@ -181,6 +186,8 @@ class VerifyActivity : AppCompatActivity() {
 
             // Set a dismiss listener on the dialog
             dialog.setOnDismissListener {
+                closing = true
+
                 if (complete) {
                     val intent = Intent(this@VerifyActivity, MainActivity::class.java)
                     startActivity(intent)

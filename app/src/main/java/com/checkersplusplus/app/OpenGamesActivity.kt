@@ -68,8 +68,10 @@ class OpenGamesActivity : AppCompatActivity() {
         }
 
         // Set up Spinners
-        setupSpinner(findViewById(R.id.spinnerSortBy), arrayOf("Creation date", "Opponent Rating"))
-        setupSpinner(findViewById(R.id.spinnerSortDirection), arrayOf("Ascending", "Descending"))
+        setupSpinner(findViewById(R.id.spinnerSortBy), arrayOf(getString(R.string.creation_date),
+            getString(R.string.opponent_rating)))
+        setupSpinner(findViewById(R.id.spinnerSortDirection), arrayOf(getString(R.string.asc),
+            getString(R.string.desc)))
 
         // Set input filters
         findViewById<EditText>(R.id.editTextLowestRating).filters = arrayOf(InputFilterMinMax(0, 10000))
@@ -85,8 +87,7 @@ class OpenGamesActivity : AppCompatActivity() {
                 val builder = AlertDialog.Builder(this)
 
                 val htmlFormattedText = HtmlCompat.fromHtml(
-                    "Don't know the rules? Checkers++ is different from traditional checkers. " +
-                            "We highly recommend you visit our website to learn about the different rules. <br/><a href='https://www.checkersplusplus.com'>www.checkersplusplus.com</a>",
+                    getString(R.string.tutorial_text) + " <br/><a href='https://www.checkersplusplus.com'>www.checkersplusplus.com</a>",
                     HtmlCompat.FROM_HTML_MODE_LEGACY
                 )
 
@@ -94,13 +95,13 @@ class OpenGamesActivity : AppCompatActivity() {
                 builder.setMessage(htmlFormattedText)
 
                 // Add a button to close the dialog
-                builder.setNegativeButton("Close") { dialog, _ ->
+                builder.setNegativeButton(getString(R.string.close_button)) { dialog, _ ->
                     // User clicked the "Close" button, so dismiss the dialog
                     StorageUtil.saveData("tutorial", "false")
                     dialog.dismiss()
                 }
 
-                builder.setPositiveButton("Dont show again") { dialog, _ ->
+                builder.setPositiveButton(getString(R.string.dont_show_again)) { dialog, _ ->
                     updateTutorialSettings();
                     StorageUtil.saveData("tutorial", "false")
                     dialog.dismiss()
@@ -133,7 +134,7 @@ class OpenGamesActivity : AppCompatActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         applicationContext,
-                        "Failed to update settings.",
+                        getString(R.string.failed_to_update),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -144,13 +145,13 @@ class OpenGamesActivity : AppCompatActivity() {
                     if (response.isSuccessful) {
                         Toast.makeText(
                             applicationContext,
-                            "Updated settings.",
+                            getString(R.string.update_success),
                             Toast.LENGTH_SHORT
                         ).show()
                     } else {
                         Toast.makeText(
                             applicationContext,
-                            "Failed to update settings.",
+                            getString(R.string.failed_to_update),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -188,14 +189,14 @@ class OpenGamesActivity : AppCompatActivity() {
 
     fun parseResponse(responseData: String?): List<OpenGameListItem> {
         if (responseData == null || responseData == "") {
-            showMessage("No response from server. Try again soon")
+            showMessage(getString(R.string.no_server_response_error))
             return emptyList()
         }
 
         val openGameResponse = responseData?.let { ResponseUtil.parseJsonArray(it) }
 
         if (openGameResponse == null) {
-            showMessage("Invalid response from server. Try again soon")
+            showMessage(getString(R.string.invalid_server_response_error))
             return emptyList()
         }
 
@@ -204,13 +205,13 @@ class OpenGamesActivity : AppCompatActivity() {
 
             for (i in 0 until openGameResponse.length()) {
                 val jsonObject = openGameResponse.getJSONObject(i)
-                var redUsername = "open"
+                var redUsername = ""
 
                 if (jsonObject.has("redUsername")) {
                     redUsername = jsonObject.getString("redUsername")
                 }
 
-                var blackUsername = "open"
+                var blackUsername = ""
 
                 if (jsonObject.has("blackUsername")) {
                     blackUsername = jsonObject.getString("blackUsername")
@@ -222,14 +223,14 @@ class OpenGamesActivity : AppCompatActivity() {
 
             if (retList.size == 0) {
                 runOnUiThread {
-                    Toast.makeText(applicationContext, "No games available. Try again soon", Toast.LENGTH_LONG).show()
+                    Toast.makeText(applicationContext, getString(R.string.nothing_open), Toast.LENGTH_LONG).show()
                 }
             }
 
             return retList
         } else {
             runOnUiThread {
-                Toast.makeText(applicationContext, "No games available. Try again soon", Toast.LENGTH_LONG).show()
+                Toast.makeText(applicationContext, getString(R.string.nothing_open), Toast.LENGTH_LONG).show()
             }
         }
 
@@ -253,14 +254,14 @@ class OpenGamesActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                showMessage("Network error. Failed to connect. Try again later.")
+                showMessage(getString(R.string.network_error))
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
 
                 if (responseBody == null) {
-                    showMessage("Invalid response from server. Try again soon")
+                    showMessage(getString(R.string.invalid_server_response_error))
 
                     return
                 }
@@ -299,7 +300,7 @@ class OpenGamesActivity : AppCompatActivity() {
         var openGamesUrl = "https://" + BuildConfig.BASE_URL + "/game/open?"
         val spinnerSortBy: Spinner = findViewById(R.id.spinnerSortBy)
 
-        openGamesUrl += if (spinnerSortBy.selectedItem == "Opponent Rating") {
+        openGamesUrl += if (spinnerSortBy.selectedItem == getString(R.string.opponent_rating)) {
             "sortBy=creatorRating&"
         } else {
             "sortBy=created&"
@@ -307,7 +308,7 @@ class OpenGamesActivity : AppCompatActivity() {
 
         val spinnerSortDirection: Spinner = findViewById(R.id.spinnerSortDirection)
 
-        openGamesUrl += if (spinnerSortDirection.selectedItem == "Descending") {
+        openGamesUrl += if (spinnerSortDirection.selectedItem == getString(R.string.desc)) {
             "sortDirection=desc&"
         } else {
             "sortDirection=asc&"
@@ -380,14 +381,14 @@ class OpenGamesActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                showMessage("Bad network connection. Please try again.")
+                showMessage(getString(R.string.network_error))
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
 
                 if (responseBody == null) {
-                    showMessage("Invalid response from server. Try again soon")
+                    showMessage(getString(R.string.invalid_server_response_error))
 
                     return
                 }
@@ -411,15 +412,15 @@ class OpenGamesActivity : AppCompatActivity() {
             val builder = AlertDialog.Builder(this)
 
             // Set the message to show in the dialog
-            builder.setMessage("Do you want to go first?")
+            builder.setMessage(getString(R.string.want_to_go_first))
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Yes") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.yes)) { dialog, _ ->
                 dialog.dismiss()
                 createGame(true)
             }
 
-            builder.setNegativeButton("No") { dialog, _ ->
+            builder.setNegativeButton(getString(R.string.no)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
                 createGame(false)
@@ -449,7 +450,7 @@ class OpenGamesActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }

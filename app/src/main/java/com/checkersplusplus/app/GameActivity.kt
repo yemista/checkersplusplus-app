@@ -27,6 +27,7 @@ import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -57,6 +58,7 @@ import kotlin.coroutines.resumeWithException
 
 
 class GameActivity : AppCompatActivity() {
+    private var coroutineJob: Job? = null
     private lateinit var webSocketClient: OkHttpClient
     private lateinit var webSocket: WebSocket
     private var playersTurn : Boolean = false
@@ -106,6 +108,7 @@ class GameActivity : AppCompatActivity() {
             .writeTimeout(BuildConfig.NETWORK_TIMEOUT, TimeUnit.SECONDS)
             .build()
 
+        opponentName = getString(R.string.opponent)
         val gameId = intent.getStringExtra("gameId")
 
         if (gameId == null) {
@@ -162,6 +165,7 @@ class GameActivity : AppCompatActivity() {
             })
         //MobileAds.initialize(this) {}
         //loadRewardedAd()
+        coroutineJob = null
     }
 
     private fun updateCheckerBoard(game: Game, myTurn: Boolean, isBlack: Boolean) {
@@ -192,33 +196,45 @@ class GameActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            if (coroutineJob?.isActive == true) {
+                return@setOnClickListener
+            }
+
             buttonPressed = true
             var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
 
             if (checkersBoard.shouldDoMove()) {
-                CoroutineScope(Dispatchers.Main).launch {
+                if (!playersTurn) {
+                    return@setOnClickListener
+                }
+
+                coroutineJob = CoroutineScope(Dispatchers.Main).launch {
                     if (isActive) {
                         onResume()
                     }
 
-                    val result = async { sendMove() }
-                    result.await()
+                    try {
+                        val result = async { sendMove() }
+                        result.await()
 
-                    if (result.getCompleted()) {
-                        try {
-                            countDownTimer?.cancel()
-                            val status: TextView = findViewById(R.id.timeLeftText)
-                            status.text = ""
-                            checkersBoard.doMove()
-                            setTurn(false)
-                            //checkersBoard.invalidate()
-                            //checkersBoard.requestLayout()
-                        } catch (e: Exception) {
-                            restartApp()
+                        if (result.getCompleted()) {
+                            try {
+                                countDownTimer?.cancel()
+                                val status: TextView = findViewById(R.id.timeLeftText)
+                                status.text = ""
+                                checkersBoard.doMove()
+                                setTurn(false)
+                                //checkersBoard.invalidate()
+                                //checkersBoard.requestLayout()
+                            } catch (e: Exception) {
+                                restartApp()
+                            }
                         }
-                    }
+                    } catch (e: Exception) {
 
-                    buttonPressed = false
+                    } finally {
+                        buttonPressed = false
+                    }
                 }
             } else {
                 runOnUiThread {
@@ -236,16 +252,16 @@ class GameActivity : AppCompatActivity() {
 
         resignButton.setOnClickListener {
             val builder = AlertDialog.Builder(this)
-            builder.setTitle("Forfeit")
-            builder.setMessage("Are you sure you want to forfeit this game?")
+            builder.setTitle(getString(R.string.forfeit))
+            builder.setMessage(getString(R.string.forfeit_text))
 
             // Setting the OK Button
-            builder.setPositiveButton("Yes") { dialog, which ->
+            builder.setPositiveButton(getString(R.string.yes)) { dialog, which ->
                 forfeitGame()
             }
 
             // Setting the Cancel Button
-            builder.setNegativeButton("No") { dialog, which ->
+            builder.setNegativeButton(getString(R.string.no)) { dialog, which ->
                 dialog.dismiss() // Simply dismiss the dialog
             }
 
@@ -279,14 +295,14 @@ class GameActivity : AppCompatActivity() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                showMessage("Network error. Please try again.")
+                showMessage(getString(R.string.network_error))
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseBody = response.body?.string()
 
                 if (responseBody == null) {
-                    showMessage("Invalid response from server. Try again soon")
+                    showMessage(getString(R.string.no_server_response_error))
                     return
                 }
 
@@ -341,7 +357,7 @@ class GameActivity : AppCompatActivity() {
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                showFailureDialog("Failed to connect", true)
+                showFailureDialog(getString(R.string.network_error), true)
 //                webSocket.close(1000, null)
 //                connected = false
             }
@@ -380,7 +396,7 @@ class GameActivity : AppCompatActivity() {
                         deferred.await()
 
                         if (deferred.getCompleted()) {
-                            showEndGameDialog("You timed out. You lose. Your new rating is " + parts[1])
+                            showEndGameDialog(getString(R.string.player_timeout_error) + parts[1])
                         }
 
                     }
@@ -391,7 +407,7 @@ class GameActivity : AppCompatActivity() {
                         deferred.await()
 
                         if (deferred.getCompleted()) {
-                            showEndGameDialog(opponentName + " timed out. You win. Your new rating is " + parts[1])
+                            showEndGameDialog(opponentName + getString(R.string.opponent_timeout_error) + parts[1])
                         }
                     }
                 } else if (message.startsWith("FORFEIT")) {
@@ -402,7 +418,7 @@ class GameActivity : AppCompatActivity() {
 
                         if (deferred.getCompleted()) {
                             showEndGameDialog(
-                                opponentName + " forfeits. You win. Your new rating is " + message.split(
+                                opponentName + getString(R.string.opponent_forfeit) + message.split(
                                     '|'
                                 )[1]
                             )
@@ -417,7 +433,7 @@ class GameActivity : AppCompatActivity() {
                         if (deferred.getCompleted()) {
                             val parts = message.split('|')
                             val newRating = parts[1]
-                            showEndGameDialog("You win. Your new rating is " + newRating.toString())
+                            showEndGameDialog(getString(R.string.win_message) + newRating.toString())
                         }
                     }
                 } else if (message.startsWith("LOSE")) {
@@ -433,10 +449,10 @@ class GameActivity : AppCompatActivity() {
                             val finalMove = parts[3]
                             try {
                                 processMoveFromServer(moveNum, finalMove) {
-                                    showEndGameDialog("You lose. Your new rating is " + newRating)
+                                    showEndGameDialog(getString(R.string.lose_message) + newRating)
                                 }
                             } catch (e: Exception) {
-                                showEndGameDialog("You lose. Your new rating is " + newRating)
+                                showEndGameDialog(getString(R.string.lose_message) + newRating)
                             }
                         }
                     }
@@ -449,16 +465,16 @@ class GameActivity : AppCompatActivity() {
 
                         if (deferred.getCompleted()) {
                             if (parts.size == 2) {
-                                showEndGameDialog("Draw.")
+                                showEndGameDialog(getString(R.string.draw_message))
                             } else {
                                 val moveNum = parts[1]
                                 val finalMove = parts[2]
                                 try {
                                     processMoveFromServer(moveNum, finalMove) {
-                                        showEndGameDialog("Draw.")
+                                        showEndGameDialog(getString(R.string.draw_message))
                                     }
                                 } catch (e: Exception) {
-                                    showEndGameDialog("Draw.")
+                                    showEndGameDialog(getString(R.string.draw_message))
                                 }
                             }
                         }
@@ -496,9 +512,9 @@ class GameActivity : AppCompatActivity() {
                                 val status: TextView =
                                     findViewById(R.id.statusTextView)
                                 if (playersTurn) {
-                                    status.text = "Your turn"
+                                    status.text = getString(R.string.your_turn)
                                 } else {
-                                    status.text = opponentName + "'s turn"
+                                    status.text = opponentName + "'s " + getString(R.string.turn)
                                 }
 
                                 status.invalidate()
@@ -801,7 +817,7 @@ class GameActivity : AppCompatActivity() {
             val call = client.newCall(request)
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    showMessage("Network error. Failed to connect. Try again soon.")
+                    showMessage(getString(R.string.network_error))
                     continuation.resumeWithException(e)
                     finish()
                 }
@@ -810,19 +826,19 @@ class GameActivity : AppCompatActivity() {
                     val responseBody = response.body?.string() ?: ""
 
                     if (responseBody == null) {
-                        showMessage("No response from server. Try again soon")
+                        showMessage(getString(R.string.no_server_response_error))
                         finish()
                     }
 
                     if (response.code == 404 /*NOT_FOUND*/) {
-                        showMessage("The game you were looking for no longer exists")
+                        showMessage(getString(R.string.game_no_longer_exists_error))
                         finish()
                     }
 
                     val game = ResponseUtil.parseJson(responseBody)
 
                     if (game == null || game.isEmpty()) {
-                        showMessage("Invalid response from server. Try again soon")
+                        showMessage(getString(R.string.invalid_server_response_error))
                         finish()
                     }
 
@@ -856,9 +872,9 @@ class GameActivity : AppCompatActivity() {
                                 resignButton.invalidate()
 
                                 if (playersTurn) {
-                                    status.text = "Your turn"
+                                    status.text = getString(R.string.your_turn)
                                 } else {
-                                    status.text = opponentName + "'s turn"
+                                    status.text = opponentName + "'s " + getString(R.string.turn)
                                 }
 
                                 val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
@@ -887,7 +903,7 @@ class GameActivity : AppCompatActivity() {
             val call = client.newCall(request)
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    showMessage("Connection error. Please try again")
+                    showMessage(getString(R.string.network_error))
                     continuation.resumeWithException(e)
                 }
 
@@ -966,34 +982,40 @@ class GameActivity : AppCompatActivity() {
 
         return suspendCancellableCoroutine { continuation ->
             val call = client.newCall(request)
+
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    showMessage("Connection error. Try again.")
+                    showMessage(getString(R.string.network_error))
                     continuation.resume(false)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    if (response.isSuccessful) {
-                        currentMove++
-                        val checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
-                        checkersBoard.setIsMyTurn(false)
-                    } else {
-                        val responseBody = response.body?.string()
+                    try {
+                        if (response.isSuccessful) {
+                            currentMove++
+                            val checkersBoard: CheckerBoardView =
+                                findViewById(R.id.checkerBoardView)
+                            checkersBoard.setIsMyTurn(false)
+                        } else {
+                            val responseBody = response.body?.string()
 
-                        if (responseBody == null) {
-                            showMessage("Invalid response from server. Try again soon")
+                            if (responseBody == null) {
+                                showMessage(getString(R.string.invalid_server_response_error))
+                                continuation.resume(false)
+                                return
+                            }
+
+                            val game = ResponseUtil.parseJson(responseBody)
+
+                            showMessage(game["message"].toString())
                             continuation.resume(false)
-                            return
                         }
 
-                        val game = ResponseUtil.parseJson(responseBody)
+                        response.close()
+                        continuation.resume(true)
+                    } catch (e: Exception) {
 
-                        showMessage(game["message"].toString())
-                        continuation.resume(false)
                     }
-
-                    response.close()
-                    continuation.resume(true)
                 }
             })
         }
@@ -1007,7 +1029,7 @@ class GameActivity : AppCompatActivity() {
             val builder = AlertDialog.Builder(this)
 
             // Set the message to show in the dialog
-            builder.setMessage("Network error. Please login back in to resume your game. " + message)
+            builder.setMessage(getString(R.string.network_error_log_back_in) + " " + message)
 
             // Add a button to close the dialog
             builder.setPositiveButton("Close") { dialog, _ ->
@@ -1047,7 +1069,7 @@ class GameActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }
@@ -1123,7 +1145,7 @@ class GameActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 runOnUiThread {
-                    showMessage("Network error. Failed to connect. Try again soon.")
+                    showMessage(getString(R.string.network_error))
                 }
             }
 
@@ -1132,7 +1154,7 @@ class GameActivity : AppCompatActivity() {
 
                 if (responseBody == null) {
                     runOnUiThread {
-                        showMessage("Invalid response from server. Try again soon")
+                        showMessage(getString(R.string.invalid_server_response_error))
                     }
 
                     return
@@ -1160,7 +1182,7 @@ class GameActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }

@@ -64,19 +64,14 @@ class ResetPasswordActivity : AppCompatActivity() {
     private fun validateInput(password: String, confirmPassword: String, verificationCode: String): Boolean {
         if (password.isEmpty() || confirmPassword.isEmpty() || verificationCode.isEmpty()) {
             // Show error messages for empty fields
-            if (password.isEmpty()) passwordEditText.error = "Password is required"
-            if (confirmPassword.isEmpty()) confirmPasswordEditText.error = "Confirm Password is required"
-            if (verificationCode.isEmpty()) verificationCodeEditText.error = "Verification Code is required"
+            if (password.isEmpty()) passwordEditText.error = getString(R.string.password_required)
+            if (confirmPassword.isEmpty()) confirmPasswordEditText.error = getString(R.string.confirm_password_required)
+            if (verificationCode.isEmpty()) verificationCodeEditText.error = getString(R.string.verification_required)
             return false
         }
 
         if (password != confirmPassword) {
-            confirmPasswordEditText.error = "Passwords do not match"
-            return false
-        }
-
-        if (!isValidPassword(password)) {
-            passwordEditText.error = "Password must be at least 8 characters and include a mix of upper and lower case letters and numbers"
+            confirmPasswordEditText.error = getString(R.string.password_not_match)
             return false
         }
 
@@ -118,7 +113,7 @@ class ResetPasswordActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
-                showMessage("Network error. Failed to connect. Try again soon.")
+                showMessage(getString(R.string.network_error))
                 buttonPressed = false
             }
 
@@ -126,14 +121,14 @@ class ResetPasswordActivity : AppCompatActivity() {
                 val responseBody = response.body?.string() ?: ""
 
                 if (responseBody == null) {
-                    showMessage("No response from server. Try again soon")
+                    showMessage(getString(R.string.no_server_response_error))
                     return
                 }
 
                 val createAccountResponse = ResponseUtil.parseJson(responseBody)
 
                 if (createAccountResponse == null) {
-                    showMessage("Invalid response from server. Try again soon")
+                    showMessage(getString(R.string.invalid_server_response_error))
                     return
                 }
 
@@ -162,7 +157,7 @@ class ResetPasswordActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }

@@ -133,18 +133,18 @@ class MainActivity : AppCompatActivity() {
         checkboxSaveUsername.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 val builder = AlertDialog.Builder(this)
-                builder.setTitle("Save login information")
-                builder.setMessage("Do not check this box if this is a shared device.")
+                builder.setTitle(getString(R.string.save_login_info))
+                builder.setMessage(getString(R.string.save_login_info2))
 
                 // Setting the OK Button
-                builder.setPositiveButton("Yes") { dialog, which ->
+                builder.setPositiveButton(getString(R.string.yes)) { dialog, which ->
                     val username = usernameEditText.text.toString()
                     val password = passwordEditText.text.toString()
                     saveLoginInformation(username, password)
                 }
 
                 // Setting the Cancel Button
-                builder.setNegativeButton("No") { dialog, which ->
+                builder.setNegativeButton(getString(R.string.no)) { dialog, which ->
                     dialog.dismiss() // Simply dismiss the dialog
                 }
 
@@ -206,14 +206,14 @@ class MainActivity : AppCompatActivity() {
 
         // Create the AlertDialog
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Request username")
+            .setTitle(getString(R.string.request_username))
             .setView(dialogView)
-            .setPositiveButton("Submit") { dialog, which ->
+            .setPositiveButton(getString(R.string.submit)) { dialog, which ->
                 // Handle the OK button click event
                 val userInput = editTextDialog.text.toString()
                 resendUsername(userInput)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .create()
 
         // Show the dialog
@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }
@@ -303,14 +303,14 @@ class MainActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
 
-                showResponseDialog("Bad network connection. Try restarting the app.", false)
+                showResponseDialog(getString(R.string.network_error), false)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
-                    showResponseDialog("Failed to communicate with the server. Please try again later", false)
+                    showResponseDialog(getString(R.string.network_error), false)
                 } else {
-                    showResponseDialog("We sent you the username associated with that email address. Please check your spam folder if you did not receive it.", false)
+                    showResponseDialog(getString(R.string.email_message), false)
                 }
             }
         })
@@ -331,18 +331,18 @@ class MainActivity : AppCompatActivity() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 // Handle failed network request
-                showResponseDialog("Could not reach the server. Please check your internet connection.", true)
+                showResponseDialog(getString(R.string.network_error), true)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
-                    showResponseDialog("Failed to get version from the server. Please try again later", true)
+                    showResponseDialog(getString(R.string.network_error), true)
                 } else {
                     val responseBody = response.body?.string()
 
                     if (responseBody != BuildConfig.APP_VERSION) {
                         showResponseDialog(
-                            "You are running an old version. Please update the app from the playstore.",
+                            getString(R.string.update_version_error),
                             true
                         )
                     }
@@ -377,14 +377,14 @@ class MainActivity : AppCompatActivity() {
                     val responseBody = response.body?.string()
                     Log.e("SSSO-RESP", responseBody.toString())
                     if (responseBody == null) {
-                        showMessage("No response from server. Try again soon", null)
+                        showMessage(getString(R.string.no_server_response_error), null)
                         return
                     }
 
                     val loginResponse = ResponseUtil.parseJson(responseBody)
 
                     if (loginResponse == null) {
-                        showMessage("Invalid response from server. Try again soon", null)
+                        showMessage(getString(R.string.invalid_server_response_error), null)
                         return
                     }
 
@@ -400,7 +400,7 @@ class MainActivity : AppCompatActivity() {
 
                         // Should never happen
                         if (accountId == null || sessionId == null) {
-                            showMessage("Server response missing data. Try again soon", null)
+                            showMessage(getString(R.string.invalid_server_response_error), null)
                             return
                         }
 
@@ -473,7 +473,7 @@ class MainActivity : AppCompatActivity() {
         val password = passwordEditText.text.toString()
 
         if (username.isBlank() || password.isBlank()) {
-            showMessage("Username or password cannot be empty", null)
+            showMessage(getString(R.string.username_password_blank_error), null)
             return ""
         }
 
@@ -502,14 +502,14 @@ class MainActivity : AppCompatActivity() {
                         val responseBody = response.body?.string()
 
                         if (responseBody == null) {
-                            showMessage("No response from server. Try again soon", null)
+                            showMessage(getString(R.string.no_server_response_error), null)
                             return
                         }
 
                         val loginResponse = ResponseUtil.parseJson(responseBody)
 
                         if (loginResponse == null) {
-                            showMessage("Invalid response from server. Try again soon", null)
+                            showMessage(getString(R.string.invalid_server_response_error), null)
                             return
                         }
 
@@ -525,7 +525,7 @@ class MainActivity : AppCompatActivity() {
 
                             // Should never happen
                             if (accountId == null || sessionId == null) {
-                                showMessage("Server response missing data. Try again soon", null)
+                                showMessage(getString(R.string.invalid_server_response_error), null)
                                 return
                             }
 
@@ -602,7 +602,7 @@ class MainActivity : AppCompatActivity() {
             builder.setMessage(message)
 
             // Add a button to close the dialog
-            builder.setPositiveButton("Close") { dialog, _ ->
+            builder.setPositiveButton(getString(R.string.close_button)) { dialog, _ ->
                 // User clicked the "Close" button, so dismiss the dialog
                 dialog.dismiss()
             }

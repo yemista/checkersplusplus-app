@@ -31,10 +31,10 @@ class OpenGameListAdapter(private val list: List<OpenGameListItem>, private val 
 
     override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
         val item = list[position]
-        holder.blackIdTextView.text = item.blackId ?: "open"
-        holder.redIdTextView.text = item.redId ?: "open"
+        holder.blackIdTextView.text = item.blackId ?: ""
+        holder.redIdTextView.text = item.redId ?: ""
 
-        if (holder.blackIdTextView.text == "open") {
+        if (holder.blackIdTextView.text == "") {
             holder.redIdTextView.setTypeface(null, Typeface.BOLD)
         } else {
             holder.blackIdTextView.setTypeface(null, Typeface.BOLD)
