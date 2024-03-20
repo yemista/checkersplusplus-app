@@ -4,10 +4,8 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
-import android.text.method.LinkMovementMethod
 import android.util.Log
 import android.view.LayoutInflater
 import android.widget.Button
@@ -17,17 +15,17 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.text.HtmlCompat
 import androidx.lifecycle.Lifecycle
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.games.AuthenticationResult
+import com.google.android.gms.games.PlayGames
+import com.google.android.gms.games.PlayGamesSdk
+import com.google.android.gms.games.Player
+import com.google.android.gms.tasks.Task
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
@@ -46,6 +44,7 @@ import kotlin.coroutines.resumeWithException
 
 class MainActivity : AppCompatActivity() {
 
+    private val RC_SIGN_IN: Int = 123456
     private lateinit var usernameEditText: EditText
     private lateinit var passwordEditText: EditText
     private lateinit var loginButton: Button
@@ -58,6 +57,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PlayGamesSdk.initialize(this);
         StorageUtil.init(applicationContext)
         setContentView(R.layout.initial_screen)
 
@@ -117,7 +117,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         val checkboxSaveUsername = findViewById<CheckBox>(R.id.checkboxSaveUsername)
-        val sharedPreferences = getSharedPreferences("CheckersPlusPlusAppPrefs", Context.MODE_PRIVATE)
+        val sharedPreferences =
+            getSharedPreferences("CheckersPlusPlusAppPrefs", Context.MODE_PRIVATE)
         val savedUsername = sharedPreferences.getString("username", null)
         savedUsername?.let {
             usernameEditText.setText(it)
@@ -157,47 +158,65 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Configure Google Sign-In options
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestEmail()
-            .build()
-
-        val googleSignInClient = GoogleSignIn.getClient(this, gso)
-
         // Launch the sign-in intent when the button is clicked
         val signInButton: com.google.android.gms.common.SignInButton = findViewById(R.id.sso_button)
         signInButton.setOnClickListener {
-            val signInIntent = googleSignInClient.signInIntent
-            signInLauncher.launch(signInIntent)
+//            val signInIntent = googleSignInClient.signInIntent
+//            signInLauncher.launch(signInIntent)
+
+            val gamesSignInClient = PlayGames.getGamesSignInClient(this)
+            gamesSignInClient.signIn()
+            gamesSignInClient.isAuthenticated()
+                .addOnCompleteListener { isAuthenticatedTask: Task<AuthenticationResult> ->
+                    val isAuthenticated = isAuthenticatedTask.isSuccessful &&
+                            isAuthenticatedTask.result.isAuthenticated
+                    if (isAuthenticated) {
+                        PlayGames.getPlayersClient(this).currentPlayer.addOnCompleteListener { mTask: Task<Player?>? ->
+                            val id = mTask?.getResult()?.displayName
+                            //Log.e("SSO-EMAIL", id.toString())
+                            val networkScope = CoroutineScope(Dispatchers.IO)
+                            networkScope.launch {
+                                try {
+                                    performSsoLogin(id.toString()!!)
+                                } catch (e: CancellationException) {
+                                    // Ignore cancellation
+                                } catch (e: Exception) {
+                                }
+                            }
+                        }
+                    } else {
+                        showMessage("Unable to verify your account. Please create one below", null)
+                    }
+                }
         }
 
         verifyVersion()
     }
 
-    private val signInLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        Log.e("SSO", result.toString())
-        if (result.resultCode == Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                val email = account.email
-                Log.e("SSO-EMAIL", email.toString())
-                val networkScope = CoroutineScope(Dispatchers.IO)
-                networkScope.launch {
-                    try {
-                        performSsoLogin(email.toString()!!)
-                    } catch (e: CancellationException) {
-                        // Ignore cancellation
-                    } catch (e: Exception) {
-                    }
-                }
-            } catch (e: ApiException) {
-                showMessage(e.toString(), null)
-            }
-        }
-    }
+//    private val signInLauncher = registerForActivityResult(
+//        ActivityResultContracts.StartActivityForResult()
+//    ) { result ->
+//        Log.e("SSO", result.toString())
+//        if (result.resultCode == Activity.RESULT_OK) {
+//            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+//            try {
+//                val account = task.getResult(ApiException::class.java)
+//                val email = account.email
+//                Log.e("SSO-EMAIL", email.toString())
+//                val networkScope = CoroutineScope(Dispatchers.IO)
+//                networkScope.launch {
+//                    try {
+//                        performSsoLogin(email.toString()!!)
+//                    } catch (e: CancellationException) {
+//                        // Ignore cancellation
+//                    } catch (e: Exception) {
+//                    }
+//                }
+//            } catch (e: ApiException) {
+//                showMessage(e.toString(), null)
+//            }
+//        }
+//    }
 
     private fun showUsernameDialog() {
         // Inflate the custom layout
@@ -375,7 +394,7 @@ class MainActivity : AppCompatActivity() {
             call.enqueue(object : Callback {
                 override fun onResponse(call: Call, response: Response) {
                     val responseBody = response.body?.string()
-                    Log.e("SSSO-RESP", responseBody.toString())
+                    //Log.e("SSO-RESP", responseBody.toString())
                     if (responseBody == null) {
                         showMessage(getString(R.string.no_server_response_error), null)
                         return

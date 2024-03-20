@@ -20,6 +20,8 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-7797105685801671~7704520578"/>
+        <meta-data android:name="com.google.android.gms.games.APP_ID"
+            android:value="@string/game_services_project_id"/>
         <activity
             android:name=".RequestVerificationActivity"
             android:exported="false" />

@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">Checkers++</string>
+    <string translatable="false"  name="game_services_project_id">494069488735</string>
     <string name="login">लॉगिन</string>
     <string name="create_account">खाता बनाएं</string>
     <string name="verify_account">खाते की पुष्टि करें</string>

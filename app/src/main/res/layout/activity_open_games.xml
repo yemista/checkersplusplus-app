@@ -15,7 +15,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/refresh"/>
-
+    <com.google.android.gms.ads.AdView xmlns:ads="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/adView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        ads:adSize="BANNER"
+        ads:adUnitId="ca-app-pub-7797105685801671/7681805979"></com.google.android.gms.ads.AdView>
     <Button
         android:id="@+id/filterGamesButton"
         android:layout_width="match_parent"

@@ -20,6 +20,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.MobileAds
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
@@ -117,6 +120,18 @@ class OpenGamesActivity : AppCompatActivity() {
                 (dialog.findViewById(android.R.id.message) as? TextView)?.movementMethod =  LinkMovementMethod.getInstance()
             }
         }
+
+        MobileAds.initialize(this) {
+
+        }
+
+//        var mAdView = findViewById<AdView>(R.id.adView)
+//        val adRequest1: AdRequest = AdRequest.Builder().build()
+//        mAdView.loadAd(adRequest1)
+
+        var mAdView3 = findViewById<AdView>(R.id.adView3)
+        val adRequest3: AdRequest = AdRequest.Builder().build()
+        mAdView3.loadAd(adRequest3)
     }
 
     private fun updateTutorialSettings() {

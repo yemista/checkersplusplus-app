@@ -12,7 +12,7 @@ android {
         applicationId = "com.checkersplusplus.app"
         minSdk = 24
         targetSdk = 33
-        versionCode = 24
+        versionCode = 25
         versionName = "Checkers++"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -28,7 +28,7 @@ android {
             //buildConfigField("String", "BASE_URL", "\"192.168.0.25:8080/checkersplusplus/api\"")
             buildConfigField("String", "BASE_URL", "\"server.checkersplusplus.com/checkersplusplus/api\"")
             buildConfigField("String", "APP_VERSION", "\"1.1\"")
-            buildConfigField("Long", "NETWORK_TIMEOUT", "7L")
+            buildConfigField("Long", "NETWORK_TIMEOUT", "10L")
             ndk {
                 debugSymbolLevel = "SYMBOL_TABLE"
             }
@@ -67,6 +67,7 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("androidx.core:core-ktx:1.9.0")
     implementation("com.google.android.gms:play-services-auth:19.0.0")
+    implementation("com.google.android.gms:play-services-games-v2:+")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
     implementation("androidx.activity:activity-compose:1.7.0")
     implementation(platform("androidx.compose:compose-bom:2023.03.00"))
