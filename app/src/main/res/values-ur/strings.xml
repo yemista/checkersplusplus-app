@@ -61,10 +61,10 @@
     <string name="no">Nahi</string>
     <string name="network_error">Network mein kharabi. Barah karam dubara koshish karein</string>
     <string name="player_timeout_error">Aapka waqt khatam ho gaya hai. Aap haar gaye hain. Aapki nayi rating hai </string>
-    <string name="opponent_timeout_error">ka waqt khatam ho gaya hai. Aap jeet gaye hain. Aapki nayi rating hai </string>
-    <string name="opponent_forfeit">" ne haar maani hai. Aap jeet gaye hain. Aapki nayi rating hai "</string>
-    <string name="win_message">"Aap jeet gaye hain. Aapki nayi rating hai "</string>
-    <string name="lose_message">"Aap haar gaye hain. Aapki nayi rating hai "</string>
+    <string name="opponent_timeout_error"> ka waqt khatam ho gaya hai. Aap jeet gaye hain. Aapki nayi rating hai </string>
+    <string name="opponent_forfeit"> ne haar maani hai. Aap jeet gaye hain. Aapki nayi rating hai </string>
+    <string name="win_message">Aap jeet gaye hain. Aapki nayi rating hai </string>
+    <string name="lose_message">Aap haar gaye hain. Aapki nayi rating hai </string>
     <string name="draw_message">Barabar</string>
     <string name="your_turn">Aapki bari</string>
     <string name="turn">Bari</string>

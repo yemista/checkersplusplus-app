@@ -61,7 +61,7 @@
     <string name="no">No</string>
     <string name="network_error">Network error. Please try again</string>
     <string name="player_timeout_error">You timed out. You lose. Your new rating is </string>
-    <string name="opponent_timeout_error">timed out. You win. Your new rating is </string>
+    <string name="opponent_timeout_error"> timed out. You win. Your new rating is </string>
     <string name="opponent_forfeit"> forfeits. You win. Your new rating is </string>
     <string name="win_message">You win. Your new rating is </string>
     <string name="lose_message">You lose. Your new rating is </string>

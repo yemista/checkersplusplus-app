@@ -62,9 +62,9 @@
     <string name="network_error">নেটওয়ার্ক ত্রুটি। দয়া করে আবার চেষ্টা করুন</string>
     <string name="player_timeout_error">আপনি সময় শেষ করেছেন। আপনি হেরে গেছেন। আপনার নতুন রেটিং হল </string>
     <string name="opponent_timeout_error"> সময় শেষ। আপনি জিতেছেন। আপনার নতুন রেটিং হল </string>
-    <string name="opponent_forfeit">" পরিত্যাগ করেছে। আপনি জিতেছেন। আপনার নতুন রেটিং হল "</string>
-    <string name="win_message">"আপনি জিতেছেন। আপনার নতুন রেটিং হল "</string>
-    <string name="lose_message">"আপনি হেরেছেন। আপনার নতুন রেটিং হল "</string>
+    <string name="opponent_forfeit"> পরিত্যাগ করেছে। আপনি জিতেছেন। আপনার নতুন রেটিং হল </string>
+    <string name="win_message">আপনি জিতেছেন। আপনার নতুন রেটিং হল </string>
+    <string name="lose_message">আপনি হেরেছেন। আপনার নতুন রেটিং হল </string>
     <string name="draw_message">ড্র</string>
     <string name="your_turn">আপনার পালা</string>
     <string name="turn">পালা</string>

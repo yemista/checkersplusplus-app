@@ -62,9 +62,9 @@
     <string name="network_error">नेटवर्क त्रुटि। कृपया पुनः प्रयास करें</string>
     <string name="player_timeout_error">आपका समय समाप्त हो गया है। आप हार गए हैं। आपकी नई रेटिंग है </string>
     <string name="opponent_timeout_error"> का समय समाप्त हो गया है। आप जीत गए हैं। आपकी नई रेटिंग है </string>
-    <string name="opponent_forfeit">" ने हार मान ली है। आप जीत गए हैं। आपकी नई रेटिंग है "</string>
-    <string name="win_message">"आप जीत गए हैं। आपकी नई रेटिंग है "</string>
-    <string name="lose_message">"आप हार गए हैं। आपकी नई रेटिंग है "</string>
+    <string name="opponent_forfeit"> ने हार मान ली है। आप जीत गए हैं। आपकी नई रेटिंग है </string>
+    <string name="win_message">आप जीत गए हैं। आपकी नई रेटिंग है </string>
+    <string name="lose_message">आप हार गए हैं। आपकी नई रेटिंग है </string>
     <string name="draw_message">ड्रॉ</string>
     <string name="your_turn">आपकी बारी</string>
     <string name="turn">बारी</string>

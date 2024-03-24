@@ -61,10 +61,10 @@
     <string name="no">Nahi</string>
     <string name="network_error">Network error. Kripya fir se koshish karein</string>
     <string name="player_timeout_error">Aapka samay samaapt ho gaya hai. Aap haar gaye hain. Aapka naya rating hai </string>
-    <string name="opponent_timeout_error">ka samay samaapt ho gaya hai. Aap jeet gaye hain. Aapka naya rating hai </string>
-    <string name="opponent_forfeit">" ne haar maan li hai. Aap jeet gaye hain. Aapka naya rating hai "</string>
-    <string name="win_message">"Aap jeet gaye hain. Aapka naya rating hai "</string>
-    <string name="lose_message">"Aap haar gaye hain. Aapka naya rating hai "</string>
+    <string name="opponent_timeout_error"> ka samay samaapt ho gaya hai. Aap jeet gaye hain. Aapka naya rating hai </string>
+    <string name="opponent_forfeit"> ne haar maan li hai. Aap jeet gaye hain. Aapka naya rating hai </string>
+    <string name="win_message">Aap jeet gaye hain. Aapka naya rating hai </string>
+    <string name="lose_message">Aap haar gaye hain. Aapka naya rating hai </string>
     <string name="draw_message">Draw</string>
     <string name="your_turn">Aapki baari</string>
     <string name="turn">baari</string>

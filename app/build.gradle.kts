@@ -12,7 +12,7 @@ android {
         applicationId = "com.checkersplusplus.app"
         minSdk = 24
         targetSdk = 33
-        versionCode = 25
+        versionCode = 28
         versionName = "Checkers++"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

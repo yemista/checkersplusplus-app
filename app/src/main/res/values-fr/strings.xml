@@ -62,9 +62,9 @@
     <string name="network_error">Erreur réseau. Veuillez réessayer</string>
     <string name="player_timeout_error">Vous avez dépassé le temps imparti. Vous perdez. Votre nouvelle note est </string>
     <string name="opponent_timeout_error"> a dépassé le temps imparti. Vous gagnez. Votre nouvelle note est </string>
-    <string name="opponent_forfeit">" abandonne. Vous gagnez. Votre nouvelle note est "</string>
-    <string name="win_message">"Vous gagnez. Votre nouvelle note est "</string>
-    <string name="lose_message">"Vous perdez. Votre nouvelle note est "</string>
+    <string name="opponent_forfeit"> abandonne. Vous gagnez. Votre nouvelle note est </string>
+    <string name="win_message">Vous gagnez. Votre nouvelle note est </string>
+    <string name="lose_message">Vous perdez. Votre nouvelle note est </string>
     <string name="draw_message">Match nul</string>
     <string name="your_turn">Votre tour</string>
     <string name="turn">tour</string>

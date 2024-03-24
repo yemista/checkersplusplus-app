@@ -6,19 +6,19 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
+import com.google.android.gms.auth.api.Auth
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.games.AuthenticationResult
 import com.google.android.gms.games.PlayGames
 import com.google.android.gms.games.PlayGamesSdk
@@ -54,6 +54,8 @@ class MainActivity : AppCompatActivity() {
     private var buttonPressed: Boolean = false
     private val lock = Any()
     private val loginSuccessful: Boolean = false
+    private lateinit var playGamesSignInLauncher: ActivityResultLauncher<Intent>
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,7 +68,7 @@ class MainActivity : AppCompatActivity() {
         passwordEditText = findViewById(R.id.passwordEditText)
         loginButton = findViewById(R.id.loginButton)
         createAccountButton = findViewById(R.id.createAccountButton)
-        verifyAccountButton = findViewById(R.id.verifyAccountButton)
+        //verifyAccountButton = findViewById(R.id.verifyAccountButton)
         resetPasswordButton = findViewById(R.id.resetPasswordButton)
 
         // Set up the button click listeners
@@ -89,10 +91,10 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, CreateAccountActivity::class.java)
             startActivity(intent)
         }
-        verifyAccountButton.setOnClickListener {
-            val intent = Intent(this, VerifyActivity::class.java)
-            startActivity(intent)
-        }
+//        verifyAccountButton.setOnClickListener {
+//            val intent = Intent(this, VerifyActivity::class.java)
+//            startActivity(intent)
+//        }
         resetPasswordButton.setOnClickListener {
             val intent = Intent(this, RequestVerificationActivity::class.java)
             startActivity(intent)
@@ -158,6 +160,34 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        playGamesSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data: Intent? = result.data
+                val signInResult = Auth.GoogleSignInApi.getSignInResultFromIntent(data)
+                if (signInResult!!.isSuccess) {
+                    // Continue with Play Games Services
+                    PlayGames.getPlayersClient(this).currentPlayer.addOnCompleteListener { task ->
+                        val id = task.result?.displayName
+                        // Perform SSO Login or other operations with the obtained ID
+                        val networkScope = CoroutineScope(Dispatchers.IO)
+                        networkScope.launch {
+                            try {
+                                performSsoLogin(id.toString())
+                            } catch (e: CancellationException) {
+                                // Ignore cancellation
+                            } catch (e: Exception) {
+                                showMessage("Unable to verify your account. Please create one below", null)
+                            }
+                        }
+                    }
+                } else {
+                    showMessage("Unable to verify your account. Please create one below", null)
+                }
+            }
+        }
+
+        val gamesSignInClient = PlayGames.getGamesSignInClient(this)
+
         // Launch the sign-in intent when the button is clicked
         val signInButton: com.google.android.gms.common.SignInButton = findViewById(R.id.sso_button)
         signInButton.setOnClickListener {
@@ -185,13 +215,47 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     } else {
-                        showMessage("Unable to verify your account. Please create one below", null)
+                        startSignInIntent()
                     }
                 }
-        }
 
+            gamesSignInClient.signIn()
+        }
+        gamesSignInClient.isAuthenticated()
+            .addOnCompleteListener { isAuthenticatedTask: Task<AuthenticationResult> ->
+                val isAuthenticated = isAuthenticatedTask.isSuccessful &&
+                        isAuthenticatedTask.result.isAuthenticated
+                if (isAuthenticated) {
+                    PlayGames.getPlayersClient(this).currentPlayer.addOnCompleteListener { mTask: Task<Player?>? ->
+                        val id = mTask?.getResult()?.displayName
+                        //Log.e("SSO-EMAIL", id.toString())
+                        val networkScope = CoroutineScope(Dispatchers.IO)
+                        networkScope.launch {
+                            try {
+                                performSsoLogin(id.toString()!!)
+                            } catch (e: CancellationException) {
+                                // Ignore cancellation
+                            } catch (e: Exception) {
+                            }
+                        }
+                    }
+                } else {
+                    startSignInIntent()
+                }
+            }
+        gamesSignInClient.signIn()
         verifyVersion()
     }
+
+    private fun startSignInIntent() {
+        val signInClient = GoogleSignIn.getClient(
+            this,
+            GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN
+        )
+        val intent = signInClient.signInIntent
+        playGamesSignInLauncher.launch(intent)
+    }
+
 
 //    private val signInLauncher = registerForActivityResult(
 //        ActivityResultContracts.StartActivityForResult()
