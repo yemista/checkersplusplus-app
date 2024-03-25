@@ -193,18 +193,23 @@ class GameActivity : AppCompatActivity() {
 
         moveButton.setOnClickListener {
             if (buttonPressed) {
+                Log.e("ERR", "BUTTON_PRESSED")
                 return@setOnClickListener
             }
 
             if (coroutineJob?.isActive == true) {
+                Log.e("ERR", "COROUTINE_ACTIVE")
                 return@setOnClickListener
             }
+
+            Log.e("MOVE", currentMove.toString())
 
             buttonPressed = true
             var checkersBoard: CheckerBoardView = findViewById(R.id.checkerBoardView)
 
             if (checkersBoard.shouldDoMove()) {
                 if (!playersTurn) {
+                    Log.e("ERR", "OTHERS_TURN")
                     return@setOnClickListener
                 }
 
@@ -380,12 +385,17 @@ class GameActivity : AppCompatActivity() {
 
                     CoroutineScope(Dispatchers.Main).launch {
                         try {
-                            if (processMoveFromServer(parts[1], parts[2])) {
+                            processMoveFromServer(parts[1], parts[2]) {
                                 acknowledgeGameEventSync(parts[3])
                                 currentMove++
+                                Log.e("PROCESSING_MOVE_CB", "3")
                                 processingMove.set(false)
+                                setTurn(true)
+                                Log.e("PROCESSING_MOVE_CB", "4")
                             }
                         } catch (e: Exception) {
+                            Log.e("EXC", e.toString())
+                            e.printStackTrace()
                             processingMove.set(false)
                         }
                     }
@@ -567,11 +577,13 @@ class GameActivity : AppCompatActivity() {
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 //continuation.resume(false)
+                Log.e("RESP-F", e.toString())
             }
 
             override fun onResponse(call: Call, response: Response) {
+                Log.e("RESP-S", response.message.toString())
                 if (response.isSuccessful) {
-                    //continuation.resume(true)
+                    //setTurn(true)
                 } else {
                     //continuation.resume(false)
                 }
@@ -607,10 +619,11 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
-    private fun processMoveFromServer(
+    private suspend fun processMoveFromServer(
         moveNum: String, moveList: String,
         callback: (() -> Unit)? = null
     ): Boolean {
+        Log.e("PROCESSING_MOVE", processingMove.get().toString())
         if (!processingMove.getAndSet(true)) {
             val num = moveNum.toIntOrNull()
 
@@ -719,13 +732,19 @@ class GameActivity : AppCompatActivity() {
                 }
             }
 
-            if (callback == null) {
-                checkersBoard.doServerMove(squares, isKing!!) {
-                    setTurn(true)
-                    startTimer();
+            try {
+                if (callback == null) {
+                    checkersBoard.doServerMove(squares, isKing!!) {
+                        Log.e("PROCESSING_MOVE_CB", "1")
+                        setTurn(true)
+                        Log.e("PROCESSING_MOVE_CB", "2")
+                        startTimer();
+                    }
+                } else {
+                    checkersBoard.doServerMove(squares, isKing!!, callback)
                 }
-            } else {
-                checkersBoard.doServerMove(squares, isKing!!, callback)
+            } catch (e: Exception) {
+                Log.e("PROCESSING_MOVE_EX", e.toString())
             }
 
             return true
@@ -753,11 +772,15 @@ class GameActivity : AppCompatActivity() {
         checkersBoard.setIsMyTurn(myTurn)
         val status: TextView = findViewById(R.id.statusTextView)
 
+        Log.e("SET_TURN", myTurn.toString())
+
         if (myTurn) {
             status.text = "Your turn"
         } else {
             status.text = opponentName + "'s turn"
         }
+
+        this.playersTurn = myTurn
     }
 
     private fun parseOutNumber(part: String): Int {
